@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survey Builder</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#f2f2f7;--card:#fff;--text:#1c1c1e;--sub:#8e8e93;
+  --accent:#007aff;--border:#e5e5ea;--danger:#ff3b30;
+  --badge-swipe:#34c759;--badge-dial:#007aff;--badge-tap:#ff9500;--badge-multi:#af52de;
+}
+body{font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:24px 16px 80px;}
+h1{font-size:20px;font-weight:700;margin-bottom:24px;display:flex;align-items:center;gap:8px;}
+h1 span{font-size:22px;}
+
+/* ── Section ── */
+.section{background:var(--card);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.section-title{font-size:13px;font-weight:600;color:var(--sub);letter-spacing:.06em;margin-bottom:12px;text-transform:uppercase;}
+
+/* ── GAS URL ── */
+.gas-row{display:flex;gap:8px;align-items:center;}
+.gas-input{
+  flex:1;padding:12px 14px;border-radius:12px;border:1.5px solid var(--border);
+  font-size:14px;color:var(--text);background:var(--bg);outline:none;
+  transition:border-color .15s;
+}
+.gas-input:focus{border-color:var(--accent);}
+.help-btn{
+  flex-shrink:0;padding:11px 14px;border-radius:12px;border:1.5px solid var(--accent);
+  background:transparent;color:var(--accent);font-size:13px;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:background .15s;
+}
+.help-btn:hover{background:rgba(0,122,255,.07);}
+
+/* ── Modal ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);
+  z-index:200;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.open{display:flex;}
+.modal-box{
+  background:var(--card);border-radius:24px 24px 0 0;
+  width:100%;max-width:600px;max-height:90vh;
+  display:flex;flex-direction:column;
+  box-shadow:0 -8px 40px rgba(0,0,0,.15);
+}
+.modal-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:20px 20px 0;flex-shrink:0;
+}
+.modal-header h2{font-size:17px;font-weight:700;}
+.modal-close{
+  width:32px;height:32px;border-radius:50%;border:none;
+  background:var(--bg);color:var(--sub);font-size:15px;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+}
+.modal-body{overflow-y:auto;padding:16px 20px 40px;}
+.modal-grip{
+  width:36px;height:4px;border-radius:2px;background:var(--border);
+  margin:12px auto 0;flex-shrink:0;
+}
+
+/* ── Steps ── */
+.steps{display:flex;flex-direction:column;gap:20px;margin-bottom:24px;}
+.step{display:flex;gap:14px;}
+.step-num{
+  width:28px;height:28px;border-radius:50%;background:var(--accent);
+  color:#fff;font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;
+}
+.step-content{flex:1;}
+.step-title{font-size:15px;font-weight:700;margin-bottom:5px;}
+.step-desc{font-size:13px;color:var(--sub);line-height:1.6;margin-bottom:10px;}
+
+/* UI mockups */
+.ui-mock{
+  background:var(--bg);border-radius:10px;border:1px solid var(--border);
+  padding:10px 12px;font-size:12px;
+}
+.ui-menu{display:flex;flex-direction:column;gap:2px;}
+.ui-menu-item{padding:6px 8px;border-radius:6px;color:var(--sub);}
+.ui-menu-item.active{background:rgba(0,122,255,.1);color:var(--accent);font-weight:600;}
+.ui-menu-path{display:flex;align-items:center;gap:4px;color:var(--sub);font-size:12px;flex-wrap:wrap;}
+.ui-menu-path strong{color:var(--text);}
+.ui-menu-path span{color:var(--sub);}
+.ui-deploy-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
+.ui-deploy-row:last-child{border-bottom:none;}
+.ui-deploy-label{font-size:12px;color:var(--sub);}
+.ui-deploy-val{font-size:12px;font-weight:600;}
+.ui-copy-row{display:flex;align-items:center;gap:8px;margin-top:6px;}
+.ui-url-bar{flex:1;background:var(--border);border-radius:6px;height:28px;opacity:.5;}
+.ui-copy-btn{
+  padding:5px 10px;border-radius:6px;background:var(--accent);
+  color:#fff;font-size:11px;font-weight:600;border:none;cursor:default;
+}
+
+/* Code block */
+.code-block-wrap{background:#1e1e2e;border-radius:14px;overflow:hidden;margin-top:4px;}
+.code-block-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;background:rgba(255,255,255,.05);
+}
+.code-block-header span{color:#cdd6f4;font-size:12px;font-weight:600;}
+.copy-code-btn{
+  padding:5px 12px;border-radius:7px;border:1px solid rgba(255,255,255,.2);
+  background:transparent;color:#cdd6f4;font-size:12px;font-weight:600;cursor:pointer;
+  transition:background .15s;
+}
+.copy-code-btn:hover{background:rgba(255,255,255,.1);}
+.copy-code-btn.copied{color:#a6e3a1;border-color:#a6e3a1;}
+pre#gas-code{
+  padding:14px;overflow-x:auto;font-family:'SF Mono',Monaco,monospace;
+  font-size:11px;line-height:1.7;color:#cdd6f4;margin:0;
+  max-height:260px;
+}
+
+/* ── Question list ── */
+#q-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px;}
+.q-card{
+  display:flex;align-items:center;gap:10px;
+  background:var(--bg);border-radius:14px;padding:12px 14px;
+  border:1.5px solid var(--border);
+}
+.q-badge{
+  font-size:11px;font-weight:700;letter-spacing:.04em;
+  padding:4px 8px;border-radius:6px;color:#fff;white-space:nowrap;flex-shrink:0;
+}
+.badge-swipe{background:var(--badge-swipe);}
+.badge-dial {background:var(--badge-dial);}
+.badge-tap  {background:var(--badge-tap);}
+.badge-multi{background:var(--badge-multi);}
+.q-label{flex:1;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.q-meta{font-size:12px;color:var(--sub);flex-shrink:0;}
+.q-controls{display:flex;gap:4px;flex-shrink:0;}
+.icon-btn{
+  width:30px;height:30px;border-radius:8px;border:none;
+  background:transparent;cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--sub);transition:background .1s,color .1s;
+}
+.icon-btn:hover{background:var(--border);}
+.icon-btn.edit{color:#f59e0b;}
+.icon-btn.edit:hover{background:rgba(245,158,11,.12);color:#d97706;}
+.icon-btn.del{color:var(--danger);}
+.icon-btn.del:hover{background:rgba(255,59,48,.12);color:#dc2626;}
+.form-mode-title{font-size:14px;font-weight:700;color:var(--text);margin-bottom:16px;padding-top:4px;}
+.q-empty{text-align:center;color:var(--sub);font-size:14px;padding:20px 0;}
+
+/* ── Add button ── */
+.add-btn{
+  width:100%;padding:14px;border-radius:14px;border:2px dashed var(--border);
+  background:transparent;color:var(--accent);font-size:15px;font-weight:600;
+  cursor:pointer;transition:background .15s,border-color .15s;
+}
+.add-btn:hover{background:rgba(0,122,255,.05);border-color:var(--accent);}
+
+/* ── Add form ── */
+#add-form{display:none;margin-top:16px;}
+#add-form.open{display:block;}
+.form-row{margin-bottom:14px;}
+.form-label{font-size:13px;font-weight:600;color:var(--sub);margin-bottom:6px;display:block;}
+.form-input,.form-select{
+  width:100%;padding:11px 14px;border-radius:12px;border:1.5px solid var(--border);
+  font-size:15px;color:var(--text);background:var(--bg);outline:none;
+  transition:border-color .15s;-webkit-appearance:none;
+}
+.form-input:focus,.form-select:focus{border-color:var(--accent);}
+.form-row-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.form-row-grid .form-row{margin-bottom:0;}
+#type-params{margin-top:2px;}
+.form-hint{font-size:12px;color:var(--sub);margin-top:5px;}
+.form-actions{display:flex;gap:10px;margin-top:18px;}
+.btn-confirm{
+  flex:1;padding:14px;border-radius:14px;border:none;
+  background:var(--accent);color:#fff;font-size:15px;font-weight:600;
+  cursor:pointer;transition:opacity .15s;
+}
+.btn-confirm:hover{opacity:.88;}
+.btn-cancel{
+  padding:14px 20px;border-radius:14px;border:1.5px solid var(--border);
+  background:transparent;color:var(--sub);font-size:15px;font-weight:600;cursor:pointer;
+}
+
+/* ── Footer actions ── */
+.footer{
+  position:fixed;bottom:0;left:0;right:0;
+  padding:12px 16px 28px;background:rgba(242,242,247,.9);
+  backdrop-filter:blur(12px);border-top:1px solid var(--border);
+  display:flex;gap:10px;max-width:600px;margin:0 auto;
+}
+.btn-preview{
+  flex:1;padding:15px;border-radius:14px;border:1.5px solid var(--accent);
+  background:transparent;color:var(--accent);font-size:15px;font-weight:600;cursor:pointer;
+}
+.btn-download{
+  flex:2;padding:15px;border-radius:14px;border:none;
+  background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;
+  box-shadow:0 4px 14px rgba(0,122,255,.3);
+}
+
+/* ── Type selector tabs ── */
+.type-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+.type-tab{
+  padding:7px 14px;border-radius:10px;border:1.5px solid var(--border);
+  background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--sub);
+  transition:all .15s;
+}
+.type-tab.sel{color:#fff;border-color:transparent;}
+.type-tab[data-t=swipe].sel{background:var(--badge-swipe);}
+.type-tab[data-t=dial].sel {background:var(--badge-dial);}
+.type-tab[data-t=tap].sel  {background:var(--badge-tap);}
+.type-tab[data-t=multi].sel{background:var(--badge-multi);}
+</style>
+</head>
+<body>
+<h1><span>📋</span> Survey Builder</h1>
+
+<div class="section">
+  <div class="section-title">GAS URL</div>
+  <div class="gas-row">
+    <input class="gas-input" id="gas-url" type="url" placeholder="https://script.google.com/macros/s/..." />
+    <button class="help-btn" id="gas-help-btn">📋 設定手順</button>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">設問リスト</div>
+  <div id="q-list"></div>
+  <button class="add-btn" id="add-btn">＋ 設問を追加</button>
+
+  <div id="add-form">
+    <hr style="border:none;border-top:1px solid var(--border);margin:16px 0 14px;">
+    <div id="form-mode-title" class="form-mode-title">＋ 設問を追加</div>
+    <div class="form-row">
+      <label class="form-label">タイプ</label>
+      <div class="type-tabs">
+        <button class="type-tab sel" data-t="swipe">swipe</button>
+        <button class="type-tab" data-t="dial">dial</button>
+        <button class="type-tab" data-t="tap">tap</button>
+        <button class="type-tab" data-t="multi">multi</button>
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">ラベル（設問テキスト）</label>
+      <input class="form-input" id="q-label" type="text" placeholder="例：今日は調子がいい" />
+    </div>
+    <div id="type-params"></div>
+    <div class="form-actions">
+      <button class="btn-cancel" id="cancel-btn">キャンセル</button>
+      <button class="btn-confirm" id="confirm-btn">追加する</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAS設定手順モーダル -->
+<div id="gas-modal" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-grip"></div>
+    <div class="modal-header">
+      <h2>🚀 GAS デプロイ手順</h2>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="steps">
+
+        <!-- Step 1 -->
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <div class="step-title">スプレッドシートを開く</div>
+            <div class="step-desc">記録先のGoogle スプレッドシートを開き、メニューから <strong>拡張機能 → Apps Script</strong> をクリック。</div>
+            <div class="ui-mock">
+              <div class="ui-menu-path">
+                <span>拡張機能</span><span>›</span><strong>Apps Script</strong>
+              </div>
+              <div class="ui-menu" style="margin-top:8px;">
+                <div class="ui-menu-item">アドオン</div>
+                <div class="ui-menu-item">マクロ</div>
+                <div class="ui-menu-item active">⚡ Apps Script</div>
+                <div class="ui-menu-item">AppSheet</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <div class="step-title">コードを貼り付けて保存</div>
+            <div class="step-desc">エディタのコードを全選択して削除し、下のコードをコピーして貼り付け。<strong>Ctrl+S（Cmd+S）</strong> で保存。</div>
+            <div class="code-block-wrap">
+              <div class="code-block-header">
+                <span>gas-doPost.gs</span>
+                <button class="copy-code-btn" id="copy-gas-btn">コピー</button>
+              </div>
+              <pre id="gas-code"></pre>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <div class="step-title">ウェブアプリとしてデプロイ</div>
+            <div class="step-desc"><strong>デプロイ → 新しいデプロイ</strong> をクリックし、以下の設定で作成。</div>
+            <div class="ui-mock">
+              <div class="ui-deploy-row">
+                <div class="ui-deploy-label">種類</div>
+                <div class="ui-deploy-val">📄 ウェブアプリ</div>
+              </div>
+              <div class="ui-deploy-row">
+                <div class="ui-deploy-label">次のユーザーとして実行</div>
+                <div class="ui-deploy-val">自分</div>
+              </div>
+              <div class="ui-deploy-row">
+                <div class="ui-deploy-label">アクセスできるユーザー</div>
+                <div class="ui-deploy-val">全員</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4 -->
+        <div class="step">
+          <div class="step-num">4</div>
+          <div class="step-content">
+            <div class="step-title">ウェブアプリ URL をコピー</div>
+            <div class="step-desc">デプロイ完了後に表示される <strong>「デプロイを管理」</strong> 画面で、ウェブアプリの URL の <strong>「コピー」</strong> をクリック。</div>
+            <div class="ui-mock">
+              <div style="font-size:12px;color:var(--sub);margin-bottom:8px;">ウェブアプリ › URL</div>
+              <div class="ui-copy-row">
+                <div class="ui-url-bar"></div>
+                <div class="ui-copy-btn">📋 コピー ← ここ</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 5 -->
+        <div class="step">
+          <div class="step-num">5</div>
+          <div class="step-content">
+            <div class="step-title">URL を Survey Builder に貼り付け</div>
+            <div class="step-desc">コピーした URL を画面上部の <strong>「GAS URL」</strong> フィールドに貼り付けて、HTMLをダウンロードすれば完成。</div>
+          </div>
+        </div>
+
+      </div><!-- /steps -->
+    </div>
+  </div>
+</div>
+
+<div class="footer">
+  <button class="btn-preview" id="preview-btn">👁 プレビュー</button>
+  <button class="btn-download" id="download-btn">⬇ HTMLをダウンロード</button>
+</div>
+
+<script>
+// ── 状態 ──
+let questions = [
+  { type: 'swipe', label: '今日は調子がいい' },
+  { type: 'dial',  label: '体重', min: 40, max: 120, step: 0.1, unit: 'kg' },
+  { type: 'tap',   label: '睡眠評価', min: 1, max: 5 },
+  { type: 'multi', label: '食事で気をつけたこと', options: ['カロリー', 'タンパク質', '野菜'] },
+];
+let selectedType = 'swipe';
+let editingIdx = null; // null=追加モード、number=編集モード
+
+// ── レンダリング ──
+function renderList() {
+  const list = document.getElementById('q-list');
+  if (questions.length === 0) {
+    list.innerHTML = '<div class="q-empty">設問がありません。追加してください。</div>';
+    return;
+  }
+  list.innerHTML = '';
+  questions.forEach((q, i) => {
+    const card = document.createElement('div');
+    card.className = 'q-card';
+
+    const badge = document.createElement('div');
+    badge.className = 'q-badge badge-' + q.type;
+    badge.textContent = q.type;
+
+    const label = document.createElement('div');
+    label.className = 'q-label';
+    label.textContent = q.label;
+
+    const meta = document.createElement('div');
+    meta.className = 'q-meta';
+    if (q.type === 'dial') meta.textContent = q.min + '〜' + q.max + (q.unit ? ' ' + q.unit : '');
+    if (q.type === 'tap')  meta.textContent = q.min + '〜' + q.max;
+    if (q.type === 'multi') meta.textContent = q.options.length + '択';
+
+    const controls = document.createElement('div');
+    controls.className = 'q-controls';
+
+    const upBtn = document.createElement('button');
+    upBtn.className = 'icon-btn'; upBtn.textContent = '↑'; upBtn.title = '上へ';
+    upBtn.disabled = i === 0;
+    upBtn.onclick = () => { questions.splice(i - 1, 0, questions.splice(i, 1)[0]); renderList(); };
+
+    const downBtn = document.createElement('button');
+    downBtn.className = 'icon-btn'; downBtn.textContent = '↓'; downBtn.title = '下へ';
+    downBtn.disabled = i === questions.length - 1;
+    downBtn.onclick = () => { questions.splice(i + 1, 0, questions.splice(i, 1)[0]); renderList(); };
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'icon-btn edit'; editBtn.textContent = '✏'; editBtn.title = '編集';
+    editBtn.onclick = () => openForm(i);
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'icon-btn del'; delBtn.textContent = '✕'; delBtn.title = '削除';
+    delBtn.onclick = () => { if (confirm('"' + q.label + '" を削除しますか？')) { questions.splice(i, 1); renderList(); } };
+
+    controls.append(upBtn, downBtn, editBtn, delBtn);
+    card.append(badge, label, meta, controls);
+    list.appendChild(card);
+  });
+}
+
+// ── タイプ別パラメータUI ──
+const TYPE_PARAMS = {
+  swipe: () => '',
+  dial: () => `
+    <div class="form-row-grid">
+      <div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="p-min" type="number" value="40"></div>
+      <div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="p-max" type="number" value="120"></div>
+    </div>
+    <div class="form-row-grid" style="margin-top:10px">
+      <div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="p-step" type="number" value="1" step="any"></div>
+      <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="p-unit" type="text" placeholder="kg, kcal …"></div>
+    </div>
+    <div class="form-row" style="margin-top:10px">
+      <label class="form-label">初期値 <span style="font-weight:400;color:var(--sub)">(省略時: 中央値)</span></label>
+      <input class="form-input" id="p-default" type="number" step="any" placeholder="例: 70">
+    </div>`,
+  tap: () => `
+    <div class="form-row-grid">
+      <div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="p-min" type="number" value="1"></div>
+      <div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="p-max" type="number" value="5"></div>
+    </div>`,
+  multi: () => `
+    <div class="form-row">
+      <label class="form-label">選択肢（カンマ区切り）</label>
+      <input class="form-input" id="p-options" type="text" placeholder="カロリー, タンパク質, 野菜, 水分">
+      <div class="form-hint">例: カロリー, タンパク質, 野菜, 水分</div>
+    </div>`,
+};
+
+function renderTypeParams() {
+  document.getElementById('type-params').innerHTML = TYPE_PARAMS[selectedType]?.() || '';
+}
+
+// ── タイプタブ ──
+document.querySelectorAll('.type-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.remove('sel'));
+    tab.classList.add('sel');
+    selectedType = tab.dataset.t;
+    renderTypeParams();
+  };
+});
+
+// ── フォーム開閉 ──
+function openForm(idx) {
+  editingIdx = idx;
+  const isEdit = idx !== null;
+  document.getElementById('add-form').classList.add('open');
+  document.getElementById('form-mode-title').textContent = isEdit ? '✏ 設問を編集' : '＋ 設問を追加';
+  document.getElementById('confirm-btn').textContent = isEdit ? '保存する' : '追加する';
+
+  if (isEdit) {
+    // 既存設問の値をフォームに反映
+    const q = questions[idx];
+    selectedType = q.type;
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === q.type));
+    renderTypeParams();
+    document.getElementById('q-label').value = q.label;
+    if (q.type === 'dial') {
+      document.getElementById('p-min').value     = q.min;
+      document.getElementById('p-max').value     = q.max;
+      document.getElementById('p-step').value    = q.step;
+      document.getElementById('p-unit').value    = q.unit || '';
+      document.getElementById('p-default').value = q.default !== undefined ? q.default : '';
+    } else if (q.type === 'tap') {
+      document.getElementById('p-min').value = q.min;
+      document.getElementById('p-max').value = q.max;
+    } else if (q.type === 'multi') {
+      document.getElementById('p-options').value = q.options.join(', ');
+    }
+  } else {
+    // 追加モード: フォームをリセット
+    selectedType = 'swipe';
+    document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === 'swipe'));
+    renderTypeParams();
+    document.getElementById('q-label').value = '';
+  }
+  document.getElementById('q-label').focus();
+}
+
+function closeForm() {
+  editingIdx = null;
+  document.getElementById('add-form').classList.remove('open');
+}
+
+document.getElementById('add-btn').onclick    = () => openForm(null);
+document.getElementById('cancel-btn').onclick = () => closeForm();
+
+document.getElementById('confirm-btn').onclick = () => {
+  const label = document.getElementById('q-label').value.trim();
+  if (!label) { alert('ラベルを入力してください'); return; }
+
+  let q = { type: selectedType, label };
+
+  if (selectedType === 'dial') {
+    const min  = parseFloat(document.getElementById('p-min').value);
+    const max  = parseFloat(document.getElementById('p-max').value);
+    const step = parseFloat(document.getElementById('p-step').value) || 1;
+    const unit = document.getElementById('p-unit').value.trim();
+    if (isNaN(min) || isNaN(max) || min >= max) { alert('最小値・最大値を正しく入力してください'); return; }
+    q = { ...q, min, max, step };
+    if (unit) q.unit = unit;
+    const defRaw = document.getElementById('p-default').value;
+    if (defRaw !== '') {
+      const defVal = parseFloat(defRaw);
+      if (!isNaN(defVal)) q.default = Math.min(max, Math.max(min, defVal));
+    }
+  } else if (selectedType === 'tap') {
+    const min = parseInt(document.getElementById('p-min').value);
+    const max = parseInt(document.getElementById('p-max').value);
+    if (isNaN(min) || isNaN(max) || min >= max) { alert('最小値・最大値を正しく入力してください'); return; }
+    q = { ...q, min, max };
+  } else if (selectedType === 'multi') {
+    const raw = document.getElementById('p-options').value;
+    const options = raw.split(',').map(s => s.trim()).filter(Boolean);
+    if (options.length < 2) { alert('選択肢を2つ以上入力してください'); return; }
+    q = { ...q, options };
+  }
+
+  if (editingIdx !== null) {
+    questions[editingIdx] = q; // 上書き（編集）
+  } else {
+    questions.push(q);         // 末尾追加
+  }
+  renderList();
+  closeForm();
+};
+
+// ── HTML生成 ──
+function generateHTML(gasUrl, qs) {
+  const questionsStr = JSON.stringify(qs, null, 2);
+  const safeUrl = (gasUrl || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+  const css = `*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{--bg:#f2f2f7;--card:#fff;--text:#1c1c1e;--sub:#8e8e93;--accent:#007aff;--green:#34c759;--red:#ff3b30;--border:#e5e5ea;}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);}
+#app{width:100%;max-width:430px;height:100%;margin:0 auto;position:relative;overflow:hidden;}
+#pbar{position:absolute;top:0;left:0;right:0;height:3px;background:var(--border);z-index:99;}
+#pfill{height:100%;background:var(--accent);transition:width .45s ease;width:0;}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 28px 72px;opacity:0;transform:translateX(100%);transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .38s ease;pointer-events:none;}
+.screen.active{opacity:1;transform:translateX(0);pointer-events:all;}
+.screen.leaving{opacity:0;transform:translateX(-48px);}
+.q-num{font-size:13px;color:var(--sub);letter-spacing:.06em;margin-bottom:14px;font-weight:500;}
+.q-text{font-size:22px;font-weight:700;text-align:center;line-height:1.45;margin-bottom:48px;}
+.swipe-zone{width:100%;height:230px;position:relative;display:flex;align-items:center;justify-content:center;}
+.swipe-badge{position:absolute;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;letter-spacing:.04em;opacity:0;transition:opacity .1s;pointer-events:none;padding:8px 16px;border-radius:10px;}
+.badge-yes{right:8px;color:var(--green);background:rgba(52,199,89,.12);}
+.badge-no{left:8px;color:var(--red);background:rgba(255,59,48,.12);}
+.swipe-card{width:230px;height:190px;background:var(--card);border-radius:28px;box-shadow:0 10px 36px rgba(0,0,0,.09),0 2px 8px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;touch-action:none;position:relative;z-index:2;will-change:transform;}
+.swipe-card:active{cursor:grabbing;}
+.swipe-emoji{font-size:54px;pointer-events:none;}
+.swipe-guide{font-size:13px;color:var(--sub);margin-top:20px;letter-spacing:.02em;}
+.drum-col{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.drum-wrap{width:200px;height:280px;position:relative;overflow:hidden;cursor:ns-resize;touch-action:none;user-select:none;}
+.drum-hl{position:absolute;top:50%;left:12px;right:12px;transform:translateY(-50%);height:56px;border-radius:14px;background:rgba(0,122,255,.07);border:1.5px solid var(--accent);pointer-events:none;z-index:2;}
+.drum-fade{position:absolute;left:0;right:0;pointer-events:none;z-index:3;}
+.drum-fade.top{top:0;height:96px;background:linear-gradient(to bottom,var(--bg) 20%,transparent);}
+.drum-fade.bot{bottom:0;height:96px;background:linear-gradient(to top,var(--bg) 20%,transparent);}
+.drum-track{position:absolute;left:0;right:0;top:0;will-change:transform;}
+.drum-item{height:56px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--sub);pointer-events:none;}
+.drum-item.sel{font-size:28px;font-weight:700;color:var(--text);}
+.drum-unit{font-size:15px;color:var(--sub);font-weight:500;}
+.tap-row{display:flex;gap:10px;}
+.tap-btn{width:58px;height:58px;border-radius:18px;border:2px solid var(--border);background:var(--card);font-size:19px;font-weight:600;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 6px rgba(0,0,0,.06);outline:none;touch-action:manipulation;}
+.tap-btn:active{transform:scale(.91);}
+.tap-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.13);box-shadow:0 6px 20px rgba(0,122,255,.38);}
+.multi-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:320px;}
+.multi-chip{padding:10px 20px;border-radius:20px;border:2px solid var(--border);background:var(--card);font-size:15px;color:var(--sub);cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.05);outline:none;touch-action:manipulation;}
+.multi-chip.sel{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(0,122,255,.3);}
+.multi-note{font-size:12px;color:var(--sub);margin-top:16px;letter-spacing:.02em;}
+.act-btn{background:var(--accent);color:#fff;border:none;border-radius:18px;padding:17px 60px;font-size:17px;font-weight:600;cursor:pointer;margin-top:52px;letter-spacing:.02em;transition:transform .12s,box-shadow .15s;box-shadow:0 4px 18px rgba(0,122,255,.32);outline:none;touch-action:manipulation;}
+.act-btn:active{transform:scale(.96);}
+.done-wrap{text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;}
+.done-icon{font-size:72px;margin-bottom:24px;}
+.done-title{font-size:28px;font-weight:800;margin-bottom:10px;}
+.done-sub{font-size:15px;color:var(--sub);margin-bottom:28px;line-height:1.7;}
+.done-answers{background:var(--card);border-radius:18px;padding:4px 24px;margin-bottom:36px;width:100%;max-width:300px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.done-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;}
+.done-row:last-child{border-bottom:none;}
+.done-key{color:var(--sub);}
+.done-val{font-weight:600;}
+.reset-btn{background:transparent;color:var(--accent);border:2px solid var(--accent);border-radius:16px;padding:14px 44px;font-size:16px;font-weight:600;cursor:pointer;outline:none;transition:background .15s;touch-action:manipulation;}
+.reset-btn:active{background:rgba(0,122,255,.08);}
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+.shake{animation:shake .3s ease;}`;
+
+  const js = `const ITEM_H=56,DRUM_H=280,DRUM_CY=140,PAD=2;
+let answers={},curIdx=0;
+let onDragX=null,onDragY=null,onDragDone=null;
+window.addEventListener('mousemove',function(e){if(onDragX)onDragX(e.clientX);if(onDragY)onDragY(e.clientY);});
+window.addEventListener('mouseup',function(){if(onDragDone)onDragDone();});
+window.addEventListener('touchmove',function(e){if(onDragX||onDragY){e.preventDefault();if(onDragX)onDragX(e.touches[0].clientX);if(onDragY)onDragY(e.touches[0].clientY);}},{passive:false});
+window.addEventListener('touchend',function(){if(onDragDone)onDragDone();});
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e;}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
+function dialDec(step){return step<1?(String(step).split('.')[1]||'').length:0;}
+function idxToOff(vi){return DRUM_CY-(vi+PAD+0.5)*ITEM_H;}
+function offToIdx(off,count){return clamp(Math.round((DRUM_CY-ITEM_H*0.5-off)/ITEM_H-PAD),0,count-1);}
+function setProgress(n){document.getElementById('pfill').style.width=(Math.min(n,QUESTIONS.length)/QUESTIONS.length*100)+'%';}
+function goTo(n){
+  var all=document.querySelectorAll('.screen');
+  var cur=document.querySelector('.screen.active');
+  if(cur){cur.classList.remove('active');cur.classList.add('leaving');setTimeout(function(){cur.classList.remove('leaving');},450);}
+  onDragX=onDragY=onDragDone=null;curIdx=n;
+  if(all[n])all[n].classList.add('active');
+  setProgress(n);
+}
+function next(){if(curIdx+1<QUESTIONS.length)goTo(curIdx+1);else sendAndDone();}
+async function sendAndDone(){
+  var payload={timestamp:new Date().toLocaleString('ja-JP'),answers:answers};
+  populateDone();goTo(QUESTIONS.length);
+  try{await fetch(GAS_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});}
+  catch(e){console.warn('POST failed:',e);}
+}
+function populateDone(){
+  var box=document.getElementById('done-answers');if(!box)return;box.innerHTML='';
+  QUESTIONS.forEach(function(q){
+    var row=el('div','done-row');row.appendChild(el('span','done-key',q.label));
+    var v=answers[q.label];
+    var disp=v==null?'—':(Array.isArray(v)?(v.length?v.join(', '):'—'):v)+(q.unit?' '+q.unit:'');
+    row.appendChild(el('span','done-val',disp));box.appendChild(row);
+  });
+}
+function resetAll(){answers={};buildAll();setTimeout(function(){goTo(0);},30);}
+function makeScreen(q,qi){
+  var s=el('div','screen');
+  s.appendChild(el('div','q-num',(qi+1)+' / '+QUESTIONS.length));
+  s.appendChild(el('div','q-text',q.label));
+  return s;
+}
+function buildSwipe(q,qi){
+  var s=makeScreen(q,qi);
+  var zone=el('div','swipe-zone');
+  var badgeY=el('div','swipe-badge badge-yes','はい ✓');
+  var badgeN=el('div','swipe-badge badge-no','✗ いいえ');
+  var card=el('div','swipe-card');var emoji=el('div','swipe-emoji','🤔');
+  card.appendChild(emoji);zone.appendChild(badgeN);zone.appendChild(badgeY);zone.appendChild(card);
+  s.appendChild(zone);s.appendChild(el('div','swipe-guide','← いいえ　　はい →'));
+  var THRESH=82,sx=0,ox=0,active=false;
+  function onStart(x){if(active)return;active=true;sx=x;ox=0;card.style.transition='none';onDragX=onMove;onDragDone=onEnd;}
+  function onMove(x){if(!active)return;ox=x-sx;card.style.transform='translateX('+ox+'px) rotate('+(ox*0.07)+'deg)';var r=clamp(Math.abs(ox)/THRESH,0,1);badgeY.style.opacity=ox>0?r:0.1;badgeN.style.opacity=ox<0?r:0.1;emoji.textContent=ox>THRESH*0.5?'😄':ox<-THRESH*0.5?'😔':'🤔';}
+  function onEnd(){if(!active)return;active=false;onDragX=onDragDone=null;card.style.transition='transform .38s cubic-bezier(.25,.46,.45,.94)';if(ox>THRESH){answers[q.label]='はい';card.style.transform='translateX(600px) rotate(28deg)';setTimeout(next,370);}else if(ox<-THRESH){answers[q.label]='いいえ';card.style.transform='translateX(-600px) rotate(-28deg)';setTimeout(next,370);}else{card.style.transform='';badgeY.style.opacity=badgeN.style.opacity=0;emoji.textContent='🤔';}}
+  card.addEventListener('mousedown',function(e){e.preventDefault();onStart(e.clientX);});
+  card.addEventListener('touchstart',function(e){e.preventDefault();onStart(e.touches[0].clientX);},{passive:false});
+  return s;
+}
+function buildDial(q,qi){
+  var isLast=qi===QUESTIONS.length-1;
+  var dec=dialDec(q.step);var count=Math.round((q.max-q.min)/q.step)+1;
+  function getVal(i){return parseFloat((q.min+i*q.step).toFixed(dec+4));}
+  function fmt(v){return Number(v).toFixed(dec);}
+  var s=makeScreen(q,qi);var col=el('div','drum-col');var wrap=el('div','drum-wrap');
+  var hl=el('div','drum-hl');var fTop=el('div','drum-fade top');var fBot=el('div','drum-fade bot');var track=el('div','drum-track');
+  var selVI=q.default!==undefined?Math.max(0,Math.min(count-1,Math.round((q.default-q.min)/q.step))):Math.floor(count/2);answers[q.label]=getVal(selVI);
+  var domItems=[];
+  for(var p=0;p<PAD;p++){var dp=el('div','drum-item');track.appendChild(dp);domItems.push({el:dp,vi:-1});}
+  for(var i=0;i<count;i++){var d=el('div',i===selVI?'drum-item sel':'drum-item');d.textContent=fmt(getVal(i));track.appendChild(d);domItems.push({el:d,vi:i});}
+  for(var p2=0;p2<PAD;p2++){var dp2=el('div','drum-item');track.appendChild(dp2);domItems.push({el:dp2,vi:-1});}
+  wrap.appendChild(track);wrap.appendChild(hl);wrap.appendChild(fTop);wrap.appendChild(fBot);
+  col.appendChild(wrap);if(q.unit)col.appendChild(el('div','drum-unit',q.unit));s.appendChild(col);
+  var offY=idxToOff(selVI);var minOff=idxToOff(count-1);var maxOff=idxToOff(0);
+  track.style.transform='translateY('+offY+'px)';
+  function setSelected(vi){selVI=clamp(vi,0,count-1);answers[q.label]=getVal(selVI);domItems.forEach(function(it){if(it.vi>=0)it.el.classList.toggle('sel',it.vi===selVI);});}
+  var startY=0,startOff=0,isDrag=false,velY=0,prevY=0,prevT=0;
+  function onStart(y){isDrag=true;startY=y;startOff=offY;velY=0;prevY=y;prevT=Date.now();track.style.transition='none';onDragY=onMove;onDragDone=onEnd;}
+  function onMove(y){if(!isDrag)return;var now=Date.now();velY=(y-prevY)/Math.max(1,now-prevT)*16;prevY=y;prevT=now;offY=clamp(startOff+(y-startY),minOff,maxOff);track.style.transform='translateY('+offY+'px)';setSelected(offToIdx(offY,count));}
+  function onEnd(){if(!isDrag)return;isDrag=false;onDragY=onDragDone=null;var snapVI=offToIdx(clamp(offY+velY*5,minOff,maxOff),count);var snapOff=idxToOff(snapVI);offY=snapOff;track.style.transition='transform .38s cubic-bezier(.25,.46,.45,.94)';track.style.transform='translateY('+snapOff+'px)';setSelected(snapVI);}
+  wrap.addEventListener('mousedown',function(e){e.preventDefault();onStart(e.clientY);});
+  wrap.addEventListener('touchstart',function(e){e.preventDefault();onStart(e.touches[0].clientY);},{passive:false});
+  var btn=el('button','act-btn',isLast?'送信':'次へ');btn.onclick=isLast?sendAndDone:next;s.appendChild(btn);return s;
+}
+function buildTap(q,qi){
+  var isLast=qi===QUESTIONS.length-1;var s=makeScreen(q,qi);answers[q.label]=null;
+  var row=el('div','tap-row');var btns=[];
+  for(var i=q.min;i<=q.max;i++){
+    (function(val){var b=el('button','tap-btn',String(val));b.onclick=function(){btns.forEach(function(x){x.classList.remove('sel');});b.classList.add('sel');answers[q.label]=val;};row.appendChild(b);btns.push(b);})(i);
+  }
+  s.appendChild(row);
+  var btn=el('button','act-btn',isLast?'送信':'次へ');btn.onclick=function(){if(answers[q.label]==null){row.classList.remove('shake');void row.offsetWidth;row.classList.add('shake');return;}if(isLast)sendAndDone();else next();};
+  s.appendChild(btn);return s;
+}
+function buildMulti(q,qi){
+  var isLast=qi===QUESTIONS.length-1;var s=makeScreen(q,qi);answers[q.label]=[];
+  var grid=el('div','multi-grid');
+  q.options.forEach(function(opt){var chip=el('button','multi-chip',opt);chip.onclick=function(){chip.classList.toggle('sel');var arr=answers[q.label];var idx=arr.indexOf(opt);if(idx>=0)arr.splice(idx,1);else arr.push(opt);};grid.appendChild(chip);});
+  s.appendChild(grid);s.appendChild(el('div','multi-note','選ばなくてもOK'));
+  var btn=el('button','act-btn',isLast?'送信':'次へ');btn.onclick=isLast?sendAndDone:next;s.appendChild(btn);return s;
+}
+var BUILDERS={swipe:buildSwipe,dial:buildDial,tap:buildTap,multi:buildMulti};
+function buildAll(){
+  var cont=document.getElementById('screens');cont.innerHTML='';
+  QUESTIONS.forEach(function(q,i){var builder=BUILDERS[q.type];if(!builder){console.warn('Unknown type:',q.type);return;}cont.appendChild(builder(q,i));});
+  var done=el('div','screen');
+  done.innerHTML='<div class="done-wrap"><div class="done-icon">🎉</div><div class="done-title">送信完了！</div><div class="done-sub">今日も記録できました。<br>お疲れ様でした！</div><div class="done-answers" id="done-answers"></div><button class="reset-btn">もう一度記録する</button></div>';
+  done.querySelector('.reset-btn').onclick=resetAll;cont.appendChild(done);setProgress(0);
+}
+buildAll();setTimeout(function(){goTo(0);},40);`;
+
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Daily Check-in</title>
+<style>${css}</style>
+</head>
+<body>
+<div id="app">
+  <div id="pbar"><div id="pfill"></div></div>
+  <div id="screens"></div>
+</div>
+<script>
+/* 設定 */
+const GAS_URL = '${safeUrl}';
+const QUESTIONS = ${questionsStr};
+
+${js}
+<\/script>
+</body>
+</html>`;
+}
+
+// ── プレビュー ──
+document.getElementById('preview-btn').onclick = () => {
+  if (questions.length === 0) { alert('設問を追加してください'); return; }
+  const html = generateHTML(document.getElementById('gas-url').value, questions);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  window.open(URL.createObjectURL(blob), '_blank');
+};
+
+// ── ダウンロード ──
+document.getElementById('download-btn').onclick = () => {
+  if (questions.length === 0) { alert('設問を追加してください'); return; }
+  const html = generateHTML(document.getElementById('gas-url').value, questions);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'checkin.html';
+  a.click();
+};
+
+// ── GASコード ──
+const GAS_CODE = `// ─────────────────────────────────────────────────────────────
+//  Daily Check-in — Google Apps Script (doPost)
+// ─────────────────────────────────────────────────────────────
+const SHEET_NAME = 'checkin';
+
+function doPost(e) {
+  try {
+    const payload   = JSON.parse(e.postData.contents);
+    const timestamp = payload.timestamp || new Date().toLocaleString('ja-JP');
+    const answers   = payload.answers   || {};
+
+    const ss    = SpreadsheetApp.getActiveSpreadsheet();
+    let sheet   = ss.getSheetByName(SHEET_NAME);
+    if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+
+    const answerKeys = Object.keys(answers);
+    const allKeys    = ['timestamp', ...answerKeys];
+    let headers;
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow(allKeys);
+      headers = allKeys;
+    } else {
+      const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
+      headers = headerRange.getValues()[0].map(String);
+      answerKeys.forEach(key => {
+        if (!headers.includes(key)) {
+          headers.push(key);
+          sheet.getRange(1, headers.length).setValue(key);
+        }
+      });
+    }
+
+    const row = headers.map(h => {
+      if (h === 'timestamp') return timestamp;
+      return answers[h] !== undefined ? answers[h] : '';
+    });
+    sheet.appendRow(row);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok', rows: sheet.getLastRow() - 1 }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doGet() {
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'ok', message: 'Daily Check-in GAS is running.' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+// コードブロックに挿入
+document.getElementById('gas-code').textContent = GAS_CODE;
+
+// ── モーダル ──
+const modal = document.getElementById('gas-modal');
+document.getElementById('gas-help-btn').onclick = () => modal.classList.add('open');
+document.getElementById('modal-close').onclick  = () => modal.classList.remove('open');
+modal.addEventListener('click', e => { if (e.target === modal) modal.classList.remove('open'); });
+
+// ── GASコードコピー ──
+document.getElementById('copy-gas-btn').onclick = function() {
+  navigator.clipboard.writeText(GAS_CODE).then(() => {
+    this.textContent = '✓ コピー済み';
+    this.classList.add('copied');
+    setTimeout(() => { this.textContent = 'コピー'; this.classList.remove('copied'); }, 2000);
+  });
+};
+
+// ── 初期化 ──
+renderList();
+</script>
+</body>
+</html>

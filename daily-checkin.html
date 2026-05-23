@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Daily Check-in</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#f2f2f7;--card:#fff;--text:#1c1c1e;--sub:#8e8e93;
+  --accent:#007aff;--green:#34c759;--red:#ff3b30;--border:#e5e5ea;
+}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);}
+#app{width:100%;max-width:430px;height:100%;margin:0 auto;position:relative;overflow:hidden;}
+
+/* ── Progress ── */
+#pbar{position:absolute;top:0;left:0;right:0;height:3px;background:var(--border);z-index:99;}
+#pfill{height:100%;background:var(--accent);transition:width .45s ease;width:0;}
+
+/* ── Screens ── */
+.screen{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:56px 28px 72px;
+  opacity:0;transform:translateX(100%);
+  transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .38s ease;
+  pointer-events:none;
+}
+.screen.active{opacity:1;transform:translateX(0);pointer-events:all;}
+.screen.leaving{opacity:0;transform:translateX(-48px);}
+
+/* ── Header ── */
+.q-num{font-size:13px;color:var(--sub);letter-spacing:.06em;margin-bottom:14px;font-weight:500;}
+.q-text{font-size:22px;font-weight:700;text-align:center;line-height:1.45;margin-bottom:48px;}
+
+/* ── Swipe ── */
+.swipe-zone{width:100%;height:230px;position:relative;display:flex;align-items:center;justify-content:center;}
+.swipe-badge{
+  position:absolute;top:50%;transform:translateY(-50%);
+  font-size:14px;font-weight:700;letter-spacing:.04em;
+  opacity:0;transition:opacity .1s;pointer-events:none;
+  padding:8px 16px;border-radius:10px;
+}
+.badge-yes{right:8px;color:var(--green);background:rgba(52,199,89,.12);}
+.badge-no{left:8px;color:var(--red);background:rgba(255,59,48,.12);}
+.swipe-card{
+  width:230px;height:190px;background:var(--card);border-radius:28px;
+  box-shadow:0 10px 36px rgba(0,0,0,.09),0 2px 8px rgba(0,0,0,.04);
+  display:flex;align-items:center;justify-content:center;
+  cursor:grab;user-select:none;touch-action:none;
+  position:relative;z-index:2;will-change:transform;
+}
+.swipe-card:active{cursor:grabbing;}
+.swipe-emoji{font-size:54px;pointer-events:none;}
+.swipe-guide{font-size:13px;color:var(--sub);margin-top:20px;letter-spacing:.02em;}
+
+/* ── Dial / Drum ── */
+.drum-col{display:flex;flex-direction:column;align-items:center;gap:10px;}
+.drum-wrap{width:200px;height:280px;position:relative;overflow:hidden;cursor:ns-resize;touch-action:none;user-select:none;}
+.drum-hl{
+  position:absolute;top:50%;left:12px;right:12px;transform:translateY(-50%);
+  height:56px;border-radius:14px;background:rgba(0,122,255,.07);border:1.5px solid var(--accent);
+  pointer-events:none;z-index:2;
+}
+.drum-fade{position:absolute;left:0;right:0;pointer-events:none;z-index:3;}
+.drum-fade.top{top:0;height:96px;background:linear-gradient(to bottom,var(--bg) 20%,transparent);}
+.drum-fade.bot{bottom:0;height:96px;background:linear-gradient(to top,var(--bg) 20%,transparent);}
+.drum-track{position:absolute;left:0;right:0;top:0;will-change:transform;}
+.drum-item{height:56px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--sub);pointer-events:none;}
+.drum-item.sel{font-size:28px;font-weight:700;color:var(--text);}
+.drum-unit{font-size:15px;color:var(--sub);font-weight:500;}
+
+/* ── Tap ── */
+.tap-row{display:flex;gap:10px;}
+.tap-btn{
+  width:58px;height:58px;border-radius:18px;border:2px solid var(--border);
+  background:var(--card);font-size:19px;font-weight:600;color:var(--sub);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .18s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 2px 6px rgba(0,0,0,.06);outline:none;touch-action:manipulation;
+}
+.tap-btn:active{transform:scale(.91);}
+.tap-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.13);box-shadow:0 6px 20px rgba(0,122,255,.38);}
+
+/* ── Multi ── */
+.multi-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:320px;}
+.multi-chip{
+  padding:10px 20px;border-radius:20px;border:2px solid var(--border);
+  background:var(--card);font-size:15px;color:var(--sub);cursor:pointer;
+  transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.05);outline:none;touch-action:manipulation;
+}
+.multi-chip.sel{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(0,122,255,.3);}
+.multi-note{font-size:12px;color:var(--sub);margin-top:16px;letter-spacing:.02em;}
+
+/* ── Action button ── */
+.act-btn{
+  background:var(--accent);color:#fff;border:none;border-radius:18px;
+  padding:17px 60px;font-size:17px;font-weight:600;cursor:pointer;
+  margin-top:52px;letter-spacing:.02em;
+  transition:transform .12s,box-shadow .15s;
+  box-shadow:0 4px 18px rgba(0,122,255,.32);outline:none;touch-action:manipulation;
+}
+.act-btn:active{transform:scale(.96);}
+
+/* ── Complete ── */
+.done-wrap{text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;}
+.done-icon{font-size:72px;margin-bottom:24px;}
+.done-title{font-size:28px;font-weight:800;margin-bottom:10px;}
+.done-sub{font-size:15px;color:var(--sub);margin-bottom:28px;line-height:1.7;}
+.done-answers{background:var(--card);border-radius:18px;padding:4px 24px;margin-bottom:36px;width:100%;max-width:300px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
+.done-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;}
+.done-row:last-child{border-bottom:none;}
+.done-key{color:var(--sub);}
+.done-val{font-weight:600;}
+.reset-btn{
+  background:transparent;color:var(--accent);border:2px solid var(--accent);
+  border-radius:16px;padding:14px 44px;font-size:16px;font-weight:600;
+  cursor:pointer;outline:none;transition:background .15s;touch-action:manipulation;
+}
+.reset-btn:active{background:rgba(0,122,255,.08);}
+
+@keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
+.shake{animation:shake .3s ease;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="pbar"><div id="pfill"></div></div>
+  <div id="screens"></div>
+</div>
+<script>
+/* ═══════════════════════════════════════
+   ▼ 設定（ここだけ編集）▼
+═══════════════════════════════════════ */
+const GAS_URL = 'https://script.google.com/macros/s/AKfycby_DEdj2CsH34wcpkzeVQ9MLw8m5ti29Udo_J-s02IwXoVujLKqq2gmvPlGC24P4-Xjdw/exec';
+
+const QUESTIONS = [
+  { type: 'swipe', label: '今日は調子がいい' },
+  { type: 'dial',  label: '体重', min: 40, max: 120, step: 0.1, unit: 'kg' },
+  { type: 'tap',   label: '睡眠評価', min: 1, max: 5 },
+  // { type: 'multi', label: '今日意識できた食事', options: ['カロリー', 'タンパク質', '肌ケア', '消化に良いもの', '健康食材'] },
+];
+/* ═══════════════════════════════════════
+   ▲ 設定ここまで ▲
+═══════════════════════════════════════ */
+
+// ── 定数 ──
+const ITEM_H = 56, DRUM_H = 280, DRUM_CY = 140, PAD = 2;
+
+// ── 状態 ──
+let answers = {}, curIdx = 0;
+
+// ── グローバルドラッグハンドラ（各コンポーネントが使い回す）──
+let onDragX = null, onDragY = null, onDragDone = null;
+window.addEventListener('mousemove', e => { onDragX?.(e.clientX); onDragY?.(e.clientY); });
+window.addEventListener('mouseup', () => onDragDone?.());
+window.addEventListener('touchmove', e => {
+  if (onDragX || onDragY) { e.preventDefault(); onDragX?.(e.touches[0].clientX); onDragY?.(e.touches[0].clientY); }
+}, { passive: false });
+window.addEventListener('touchend', () => onDragDone?.());
+
+// ── ユーティリティ ──
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+const clamp    = (v, a, b) => Math.max(a, Math.min(b, v));
+const dialDec  = step => step < 1 ? (String(step).split('.')[1] || '').length : 0;
+const idxToOff = vi => DRUM_CY - (vi + PAD + 0.5) * ITEM_H;
+const offToIdx = (off, count) => clamp(Math.round((DRUM_CY - ITEM_H * 0.5 - off) / ITEM_H - PAD), 0, count - 1);
+
+// ── ランタイム ──
+function setProgress(n) {
+  document.getElementById('pfill').style.width = (Math.min(n, QUESTIONS.length) / QUESTIONS.length * 100) + '%';
+}
+function goTo(n) {
+  const all = document.querySelectorAll('.screen');
+  const cur = document.querySelector('.screen.active');
+  if (cur) { cur.classList.remove('active'); cur.classList.add('leaving'); setTimeout(() => cur.classList.remove('leaving'), 450); }
+  onDragX = onDragY = onDragDone = null;
+  curIdx = n;
+  all[n]?.classList.add('active');
+  setProgress(n);
+}
+function next() { curIdx + 1 < QUESTIONS.length ? goTo(curIdx + 1) : sendAndDone(); }
+
+async function sendAndDone() {
+  const payload = { timestamp: new Date().toLocaleString('ja-JP'), answers };
+  populateDone();
+  goTo(QUESTIONS.length);
+  try {
+    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
+  } catch(e) { console.warn('POST failed:', e); }
+}
+function populateDone() {
+  const box = document.getElementById('done-answers');
+  if (!box) return;
+  box.innerHTML = '';
+  QUESTIONS.forEach(q => {
+    const row = el('div', 'done-row');
+    row.appendChild(el('span', 'done-key', q.label));
+    const v = answers[q.label];
+    const disp = v == null ? '—' : (Array.isArray(v) ? (v.length ? v.join(', ') : '—') : v) + (q.unit ? ' ' + q.unit : '');
+    row.appendChild(el('span', 'done-val', disp));
+    box.appendChild(row);
+  });
+}
+function resetAll() { answers = {}; buildAll(); setTimeout(() => goTo(0), 30); }
+function makeScreen(q, qi) {
+  const s = el('div', 'screen');
+  s.appendChild(el('div', 'q-num', (qi + 1) + ' / ' + QUESTIONS.length));
+  s.appendChild(el('div', 'q-text', q.label));
+  return s;
+}
+
+// ══════════════════════════════════════
+// コンポーネント
+// 新しいタイプを追加 → 関数を書いて BUILDERS に登録するだけ
+// ══════════════════════════════════════
+
+// ── swipe ──
+function buildSwipe(q, qi) {
+  const s = makeScreen(q, qi);
+  const zone = el('div', 'swipe-zone');
+  const badgeY = el('div', 'swipe-badge badge-yes', 'はい ✓');
+  const badgeN = el('div', 'swipe-badge badge-no',  '✗ いいえ');
+  const card  = el('div', 'swipe-card');
+  const emoji = el('div', 'swipe-emoji', '🤔');
+  card.appendChild(emoji);
+  zone.append(badgeN, badgeY, card);
+  s.appendChild(zone);
+  s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →'));
+
+  const THRESH = 82;
+  let sx = 0, ox = 0, active = false;
+  const onStart = x => {
+    if (active) return;
+    active = true; sx = x; ox = 0;
+    card.style.transition = 'none';
+    onDragX = onMove; onDragDone = onEnd;
+  };
+  const onMove = x => {
+    if (!active) return;
+    ox = x - sx;
+    card.style.transform = 'translateX(' + ox + 'px) rotate(' + (ox * 0.07) + 'deg)';
+    const r = clamp(Math.abs(ox) / THRESH, 0, 1);
+    badgeY.style.opacity = ox > 0 ? r : 0.1;
+    badgeN.style.opacity = ox < 0 ? r : 0.1;
+    emoji.textContent = ox > THRESH * 0.5 ? '😄' : ox < -THRESH * 0.5 ? '😔' : '🤔';
+  };
+  const onEnd = () => {
+    if (!active) return;
+    active = false; onDragX = onDragDone = null;
+    card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+    if (ox > THRESH) {
+      answers[q.label] = 'はい';
+      card.style.transform = 'translateX(600px) rotate(28deg)';
+      setTimeout(next, 370);
+    } else if (ox < -THRESH) {
+      answers[q.label] = 'いいえ';
+      card.style.transform = 'translateX(-600px) rotate(-28deg)';
+      setTimeout(next, 370);
+    } else {
+      card.style.transform = '';
+      badgeY.style.opacity = badgeN.style.opacity = 0;
+      emoji.textContent = '🤔';
+    }
+  };
+  card.addEventListener('mousedown',  e => { e.preventDefault(); onStart(e.clientX); });
+  card.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX); }, { passive: false });
+  return s;
+}
+
+// ── dial ──
+function buildDial(q, qi) {
+  const isLast = qi === QUESTIONS.length - 1;
+  const dec = dialDec(q.step);
+  const count = Math.round((q.max - q.min) / q.step) + 1;
+  const getVal = i => parseFloat((q.min + i * q.step).toFixed(dec + 4));
+  const fmt    = v => Number(v).toFixed(dec);
+
+  const s = makeScreen(q, qi);
+  const col = el('div', 'drum-col'), wrap = el('div', 'drum-wrap');
+  const hl = el('div', 'drum-hl'), fTop = el('div', 'drum-fade top'), fBot = el('div', 'drum-fade bot');
+  const track = el('div', 'drum-track');
+
+  let selVI = q.default !== undefined
+    ? clamp(Math.round((q.default - q.min) / q.step), 0, count - 1)
+    : Math.floor(count / 2);
+  answers[q.label] = getVal(selVI);
+
+  const domItems = [];
+  for (let p = 0; p < PAD; p++) { const d = el('div', 'drum-item'); track.appendChild(d); domItems.push({ el: d, vi: -1 }); }
+  for (let i = 0; i < count; i++) {
+    const d = el('div', i === selVI ? 'drum-item sel' : 'drum-item');
+    d.textContent = fmt(getVal(i)); track.appendChild(d); domItems.push({ el: d, vi: i });
+  }
+  for (let p = 0; p < PAD; p++) { const d = el('div', 'drum-item'); track.appendChild(d); domItems.push({ el: d, vi: -1 }); }
+
+  wrap.append(track, hl, fTop, fBot);
+  col.appendChild(wrap);
+  if (q.unit) col.appendChild(el('div', 'drum-unit', q.unit));
+  s.appendChild(col);
+
+  let offY = idxToOff(selVI);
+  const minOff = idxToOff(count - 1), maxOff = idxToOff(0);
+  track.style.transform = 'translateY(' + offY + 'px)';
+
+  const setSelected = vi => {
+    selVI = clamp(vi, 0, count - 1);
+    answers[q.label] = getVal(selVI);
+    domItems.forEach(it => { if (it.vi >= 0) it.el.classList.toggle('sel', it.vi === selVI); });
+  };
+  let startY = 0, startOff = 0, isDrag = false, velY = 0, prevY = 0, prevT = 0;
+  const onStart = y => {
+    isDrag = true; startY = y; startOff = offY; velY = 0; prevY = y; prevT = Date.now();
+    track.style.transition = 'none'; onDragY = onMove; onDragDone = onEnd;
+  };
+  const onMove = y => {
+    if (!isDrag) return;
+    const now = Date.now();
+    velY = (y - prevY) / Math.max(1, now - prevT) * 16; prevY = y; prevT = now;
+    offY = clamp(startOff + (y - startY), minOff, maxOff);
+    track.style.transform = 'translateY(' + offY + 'px)';
+    setSelected(offToIdx(offY, count));
+  };
+  const onEnd = () => {
+    if (!isDrag) return;
+    isDrag = false; onDragY = onDragDone = null;
+    const snapVI = offToIdx(clamp(offY + velY * 5, minOff, maxOff), count);
+    const snapOff = idxToOff(snapVI);
+    offY = snapOff;
+    track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+    track.style.transform = 'translateY(' + snapOff + 'px)';
+    setSelected(snapVI);
+  };
+  wrap.addEventListener('mousedown',  e => { e.preventDefault(); onStart(e.clientY); });
+  wrap.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientY); }, { passive: false });
+
+  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ');
+  btn.onclick = isLast ? sendAndDone : next;
+  s.appendChild(btn);
+  return s;
+}
+
+// ── tap ──
+function buildTap(q, qi) {
+  const isLast = qi === QUESTIONS.length - 1;
+  const s = makeScreen(q, qi);
+  answers[q.label] = null;
+
+  const row = el('div', 'tap-row');
+  const btns = [];
+  for (let i = q.min; i <= q.max; i++) {
+    const b = el('button', 'tap-btn', String(i));
+    const val = i;
+    b.onclick = () => { btns.forEach(x => x.classList.remove('sel')); b.classList.add('sel'); answers[q.label] = val; };
+    row.appendChild(b); btns.push(b);
+  }
+  s.appendChild(row);
+
+  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ');
+  btn.onclick = () => {
+    if (answers[q.label] == null) { row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake'); return; }
+    if (isLast) sendAndDone(); else next();
+  };
+  s.appendChild(btn);
+  return s;
+}
+
+// ── multi（複数選択）──
+function buildMulti(q, qi) {
+  const isLast = qi === QUESTIONS.length - 1;
+  const s = makeScreen(q, qi);
+  answers[q.label] = [];
+
+  const grid = el('div', 'multi-grid');
+  q.options.forEach(opt => {
+    const chip = el('button', 'multi-chip', opt);
+    chip.onclick = () => {
+      chip.classList.toggle('sel');
+      const arr = answers[q.label];
+      const idx = arr.indexOf(opt);
+      if (idx >= 0) arr.splice(idx, 1); else arr.push(opt);
+    };
+    grid.appendChild(chip);
+  });
+  s.appendChild(grid);
+  s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
+
+  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ');
+  btn.onclick = isLast ? sendAndDone : next;
+  s.appendChild(btn);
+  return s;
+}
+
+// ══════════════════════════════════════
+// コンポーネントレジストリ
+// 新しいタイプを追加するときはここに登録する
+// ══════════════════════════════════════
+const BUILDERS = {
+  swipe: buildSwipe,
+  dial:  buildDial,
+  tap:   buildTap,
+  multi: buildMulti,
+};
+
+// ── 画面構築 ──
+function buildAll() {
+  const cont = document.getElementById('screens');
+  cont.innerHTML = '';
+  QUESTIONS.forEach((q, i) => {
+    const builder = BUILDERS[q.type];
+    if (!builder) { console.warn('[checkin] Unknown type:', q.type); return; }
+    cont.appendChild(builder(q, i));
+  });
+  const done = el('div', 'screen');
+  done.innerHTML = '<div class="done-wrap"><div class="done-icon">🎉</div><div class="done-title">送信完了！</div><div class="done-sub">今日も記録できました。<br>お疲れ様でした！</div><div class="done-answers" id="done-answers"></div><button class="reset-btn">もう一度記録する</button></div>';
+  done.querySelector('.reset-btn').onclick = resetAll;
+  cont.appendChild(done);
+  setProgress(0);
+}
+
+// ── 初期化 ──
+buildAll();
+setTimeout(() => goTo(0), 40);
+</script>
+</body>
+</html>
