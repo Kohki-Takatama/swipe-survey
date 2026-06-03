@@ -182,6 +182,16 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .splash-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:.02em;}
 .splash-sub{font-size:14px;color:var(--sub);}
 @keyframes splash-pop{0%{transform:scale(.6);opacity:0;}100%{transform:scale(1);opacity:1;}}
+/* 設問編集モーダル */
+.eq-modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s ease;}
+.eq-modal-overlay.open{opacity:1;pointer-events:all;}
+.eq-modal{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;z-index:301;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
+.eq-modal.open{transform:translateY(0);}
+.eq-modal-grip{width:36px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 6px;flex-shrink:0;}
+.eq-modal-header{display:flex;align-items:center;justify-content:space-between;padding:4px 20px 12px;flex-shrink:0;border-bottom:1px solid var(--border);}
+.eq-form-title{font-size:16px;font-weight:700;color:var(--text);}
+.eq-modal-close{width:30px;height:30px;border-radius:50%;border:none;background:var(--bg);color:var(--sub);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.eq-modal-body{overflow-y:auto;padding:16px 20px calc(32px + env(safe-area-inset-bottom));flex:1;}
 </style>
 </head>
 <body>
@@ -237,28 +247,6 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
     <div id="edit-content">
       <div id="eq-list"></div>
       <button class="add-btn" id="eq-add-btn">＋ 設問を追加</button>
-      <div id="eq-add-form" class="eq-form hidden">
-        <div class="eq-form-title" style="font-size:14px;font-weight:700;margin-bottom:14px;">＋ 設問を追加</div>
-        <div class="form-row">
-          <label class="form-label">タイプ</label>
-          <div class="type-tabs" id="eq-type-tabs">
-            <button class="type-tab sel" data-t="swipe">swipe</button>
-            <button class="type-tab" data-t="dial">dial</button>
-            <button class="type-tab" data-t="tap">tap</button>
-            <button class="type-tab" data-t="multi">multi</button>
-            <button class="type-tab" data-t="burst">burst</button>
-          </div>
-        </div>
-        <div class="form-row">
-          <label class="form-label">ラベル</label>
-          <input class="form-input" id="eq-label" type="text" placeholder="例：今日は調子がいい">
-        </div>
-        <div id="eq-type-params"></div>
-        <div class="form-actions">
-          <button class="btn-cancel" onclick="closeEditForm()">キャンセル</button>
-          <button class="btn-confirm" id="eq-confirm-btn" onclick="confirmEditForm()">追加する</button>
-        </div>
-      </div>
     </div>
     <div id="edit-footer">
       <button id="eq-save-btn" class="eq-save-btn" onclick="saveQuestions()">GASに保存する</button>
@@ -275,6 +263,36 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
         <div class="settings-section-title">GAS URL</div>
         <div id="settings-gas-url" class="settings-value-url"></div>
         <button class="settings-edit-btn" onclick="showSetupScreen(true); switchTab('answer');">変更</button>
+      </div>
+    </div>
+  </div>
+  <!-- 設問編集モーダル -->
+  <div id="eq-modal-overlay" class="eq-modal-overlay"></div>
+  <div id="eq-modal" class="eq-modal">
+    <div class="eq-modal-grip"></div>
+    <div class="eq-modal-header">
+      <div class="eq-form-title" id="eq-form-title">＋ 設問を追加</div>
+      <button class="eq-modal-close" onclick="closeEditForm()">✕</button>
+    </div>
+    <div class="eq-modal-body">
+      <div class="form-row">
+        <label class="form-label">タイプ</label>
+        <div class="type-tabs" id="eq-type-tabs">
+          <button class="type-tab sel" data-t="swipe">swipe</button>
+          <button class="type-tab" data-t="dial">dial</button>
+          <button class="type-tab" data-t="tap">tap</button>
+          <button class="type-tab" data-t="multi">multi</button>
+          <button class="type-tab" data-t="burst">burst</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">ラベル</label>
+        <input class="form-input" id="eq-label" type="text" placeholder="例：今日は調子がいい">
+      </div>
+      <div id="eq-type-params"></div>
+      <div class="form-actions">
+        <button class="btn-cancel" onclick="closeEditForm()">キャンセル</button>
+        <button class="btn-confirm" id="eq-confirm-btn" onclick="confirmEditForm()">追加する</button>
       </div>
     </div>
   </div>
@@ -660,6 +678,8 @@ let _saveTabTimer = null;
 
 function switchTab(tab) {
   if (tab !== 'answer') clearTimeout(_saveTabTimer);
+  // タブ切替時に編集モーダルが開いていたら閉じる
+  closeEditForm();
   document.getElementById('tab-answer').classList.toggle('active', tab === 'answer');
   document.getElementById('tab-edit').classList.toggle('active', tab === 'edit');
   document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
@@ -775,16 +795,13 @@ const EQ_TYPE_PARAMS = {
 
 function openEditForm(idx) {
   editingIdx = idx;
-  const form = document.getElementById('eq-add-form');
-  form.classList.remove('hidden');
   const isEdit = idx !== null;
-  const titleEl = form.querySelector('.eq-form-title');
-  if (titleEl) titleEl.textContent = isEdit ? '✏ 設問を編集' : '＋ 設問を追加';
+  document.getElementById('eq-form-title').textContent = isEdit ? '✏ 設問を編集' : '＋ 設問を追加';
   document.getElementById('eq-confirm-btn').textContent = isEdit ? '保存する' : '追加する';
   if (isEdit) {
     const q = editQuestions[idx];
     editSelectedType = q.type;
-    form.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === q.type));
+    document.querySelectorAll('#eq-type-tabs .type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === q.type));
     renderEditTypeParams();
     document.getElementById('eq-label').value = q.label;
     if (q.type === 'dial') {
@@ -811,16 +828,19 @@ function openEditForm(idx) {
     }
   } else {
     editSelectedType = 'swipe';
-    form.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === 'swipe'));
+    document.querySelectorAll('#eq-type-tabs .type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === 'swipe'));
     renderEditTypeParams();
     document.getElementById('eq-label').value = '';
   }
+  document.getElementById('eq-modal-overlay').classList.add('open');
+  document.getElementById('eq-modal').classList.add('open');
   document.getElementById('eq-label').focus();
 }
 
 function closeEditForm() {
   editingIdx = null;
-  document.getElementById('eq-add-form').classList.add('hidden');
+  document.getElementById('eq-modal-overlay').classList.remove('open');
+  document.getElementById('eq-modal').classList.remove('open');
 }
 
 const EQ_LABEL_PLACEHOLDERS = {
@@ -916,6 +936,7 @@ document.querySelectorAll('#eq-type-tabs .type-tab').forEach(tab => {
   };
 });
 document.getElementById('eq-add-btn').onclick = () => openEditForm(null);
+document.getElementById('eq-modal-overlay').addEventListener('click', closeEditForm);
 
 // 初期化（スプラッシュ画面を表示し、GASロードを並行実行）
 document.getElementById('cloud-overlay').classList.add('hidden');
