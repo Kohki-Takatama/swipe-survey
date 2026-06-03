@@ -304,20 +304,23 @@ async function sendAndDone() {
   const statusEl = document.getElementById('done-status');
   const iconEl = document.getElementById('done-icon');
   const titleEl = document.getElementById('done-title');
+  // ローディング表示
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '送信中...'; }
+  if (iconEl) { iconEl.innerHTML = '<div class="cloud-spinner" style="width:48px;height:48px;border-width:4px;margin:12px auto 12px;"></div>'; }
+  if (titleEl) titleEl.textContent = '送信中...';
   const payload = { type: 'answer', timestamp: new Date().toLocaleString('ja-JP'), answers };
   fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
     .catch(e => console.warn('POST failed:', e));
-  // no-cors はレスポンス検知不可のため楽観的表示（1.5秒後）
+  // no-cors はレスポンス検知不可のため楽観的表示（0.5秒後）
   setTimeout(() => {
     _submitted = true;
-    if (iconEl) iconEl.textContent = '🎉';
+    if (iconEl) { iconEl.innerHTML = ''; iconEl.textContent = '🎉'; }
     if (titleEl) titleEl.textContent = '記録しました ✓';
     if (statusEl) { statusEl.textContent = ''; }
     if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '再送する'; submitBtn.style.background = 'var(--sub)'; submitBtn.style.boxShadow = 'none'; }
     if (retryBtn) retryBtn.textContent = '最初に戻る';
     window.removeEventListener('beforeunload', _beforeUnloadHandler);
-  }, 1500);
+  }, 500);
 }
 function populateDone() {
   const box = document.getElementById('done-answers'); if (!box) return; box.innerHTML = '';
