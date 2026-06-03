@@ -75,7 +75,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .done-sub{font-size:15px;color:var(--sub);margin-bottom:28px;line-height:1.7;white-space:pre-line;}
 .done-answers{background:var(--card);border-radius:18px;padding:4px 16px;margin-bottom:36px;width:100%;max-width:360px;min-width:260px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
 .done-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;min-height:52px;gap:8px;}
-.done-row:last-child{border-bottom:none;}
+.done-row:last-of-type{border-bottom:none;}
 .done-key{color:var(--sub);flex:1 1 0;min-width:0;word-break:break-word;}
 .done-val{font-weight:600;flex-shrink:0;min-width:48px;max-width:55%;text-align:right;word-break:break-word;}
 .reset-btn{background:transparent;color:var(--accent);border:2px solid var(--accent);border-radius:16px;padding:14px 44px;font-size:16px;font-weight:600;cursor:pointer;outline:none;transition:background .15s;touch-action:manipulation;}
@@ -113,7 +113,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .edit-loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;color:var(--sub);}
 .edit-loading.hidden{display:none;}
 #edit-content{flex:1;overflow-y:auto;padding:16px 16px 8px;}
-#edit-footer{padding:12px 16px;border-top:1px solid var(--border);background:var(--card);}
+#edit-footer{padding:12px 16px;border-top:1px solid var(--border);background:rgba(242,242,247,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);}
 .eq-card{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:12px 14px;border:1.5px solid var(--border);margin-bottom:10px;}
 .eq-badge{font-size:11px;font-weight:700;letter-spacing:.04em;padding:4px 8px;border-radius:6px;color:#fff;white-space:nowrap;flex-shrink:0;}
 .eq-label{flex:1;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
@@ -144,6 +144,17 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .badge-multi{background:#af52de;}
 .badge-burst{background:#ff2d55;}
 .screen.done-screen{justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:72px;}
+/* メモ */
+.memo-btn{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom) + 12px);left:20px;width:36px;height:36px;border-radius:10px;border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--sub);touch-action:manipulation;transition:color .15s;-webkit-tap-highlight-color:transparent;}
+.memo-btn.has-memo{color:var(--accent);}
+.memo-sheet{position:absolute;left:0;right:0;bottom:calc(56px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--border);border-radius:18px 18px 0 0;padding:16px;z-index:50;transform:translateY(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);}
+.memo-sheet.open{transform:translateY(0);}
+.memo-sheet-input{width:100%;min-height:80px;padding:12px 14px;border-radius:14px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:15px;resize:none;outline:none;font-family:inherit;line-height:1.5;}
+.memo-sheet-input:focus{border-color:var(--accent);}
+.memo-sheet-close{display:block;margin-top:10px;width:100%;padding:12px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;}
+.done-memo-btn{background:none;border:none;font-size:16px;cursor:pointer;padding:0 0 0 8px;flex-shrink:0;-webkit-tap-highlight-color:transparent;}
+.done-memo-row{padding:8px 0 4px;}
+.done-memo-row .memo-sheet-input{min-height:56px;}
 </style>
 </head>
 <body>
@@ -261,10 +272,32 @@ async function sendAndDone() {
 function populateDone() {
   const box = document.getElementById('done-answers'); if (!box) return; box.innerHTML = '';
   QUESTIONS.forEach(q => {
-    const row = el('div', 'done-row'); row.appendChild(el('span', 'done-key', q.label));
+    const row = el('div', 'done-row');
+    row.appendChild(el('span', 'done-key', q.label));
     const v = answers[q.label];
     const disp = v == null ? '—' : (Array.isArray(v) ? (v.length ? v.join(', ') : '—') : v) + (q.unit ? ' ' + q.unit : '');
-    row.appendChild(el('span', 'done-val', disp)); box.appendChild(row);
+    row.appendChild(el('span', 'done-val', disp));
+    const hasMemo = !!(answers['[メモ] ' + q.label]);
+    const memoIconBtn = el('button', 'done-memo-btn', '📝');
+    memoIconBtn.style.opacity = hasMemo ? '1' : '0.3';
+    const memoRow = el('div', 'done-memo-row');
+    memoRow.style.display = 'none';
+    const memoInput = document.createElement('textarea');
+    memoInput.className = 'memo-sheet-input'; memoInput.rows = 2;
+    memoInput.value = answers['[メモ] ' + q.label] || '';
+    memoInput.placeholder = '書き残したいこと...';
+    memoInput.addEventListener('input', () => {
+      const v2 = memoInput.value.trim();
+      if (v2) answers['[メモ] ' + q.label] = v2; else delete answers['[メモ] ' + q.label];
+      memoIconBtn.style.opacity = v2 ? '1' : '0.3';
+    });
+    memoRow.appendChild(memoInput);
+    memoIconBtn.onclick = () => {
+      const isOpen = memoRow.style.display === 'none';
+      memoRow.style.display = isOpen ? 'block' : 'none';
+      if (isOpen) memoInput.focus();
+    };
+    row.appendChild(memoIconBtn); box.appendChild(row); box.appendChild(memoRow);
   });
 }
 function resetAll() { answers = {}; buildAll(); setTimeout(() => goTo(0), 30); }
@@ -274,6 +307,27 @@ function makeScreen(q, qi) {
   s.appendChild(el('div', 'q-text', q.label));
   return s;
 }
+function buildMemo(q, cancelAutoFn) {
+  const btn = el('button', 'memo-btn', '📝');
+  const sheet = el('div', 'memo-sheet');
+  const input = document.createElement('textarea');
+  input.className = 'memo-sheet-input'; input.placeholder = '書き残したいこと...'; input.rows = 3;
+  const closeBtn = el('button', 'memo-sheet-close', '完了');
+  sheet.append(input, closeBtn);
+  const updateBtn = () => btn.classList.toggle('has-memo', !!(answers['[メモ] ' + q.label]));
+  btn.onclick = () => {
+    sheet.classList.toggle('open');
+    if (sheet.classList.contains('open')) { cancelAutoFn?.(); input.focus(); }
+    else { document.activeElement?.blur(); }
+  };
+  input.addEventListener('input', () => {
+    const v = input.value.trim();
+    if (v) answers['[メモ] ' + q.label] = v; else delete answers['[メモ] ' + q.label];
+    updateBtn();
+  });
+  closeBtn.onclick = () => { sheet.classList.remove('open'); document.activeElement?.blur(); };
+  return { btn, sheet };
+}
 function buildSwipe(q, qi) {
   const s = makeScreen(q, qi);
   const zone = el('div', 'swipe-zone');
@@ -282,10 +336,20 @@ function buildSwipe(q, qi) {
   const card = el('div', 'swipe-card'); const emoji = el('div', 'swipe-emoji', '🤔');
   card.appendChild(emoji); zone.append(badgeN, badgeY, card);
   s.appendChild(zone); s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →'));
+  let autoTimer = null;
+  const { btn: memoBtn, sheet: memoSheet } = buildMemo(q, () => clearTimeout(autoTimer));
+  s.append(memoBtn, memoSheet);
   const THRESH = 82; let sx = 0, ox = 0, active = false;
   const onStart = x => { if (active) return; active = true; sx = x; ox = 0; card.style.transition = 'none'; onDragX = onMove; onDragDone = onEnd; };
   const onMove = x => { if (!active) return; ox = x - sx; card.style.transform = 'translateX(' + ox + 'px) rotate(' + (ox * 0.07) + 'deg)'; const r = clamp(Math.abs(ox) / THRESH, 0, 1); badgeY.style.opacity = ox > 0 ? r : 0.1; badgeN.style.opacity = ox < 0 ? r : 0.1; emoji.textContent = ox > THRESH * 0.5 ? '😄' : ox < -THRESH * 0.5 ? '😔' : '🤔'; };
-  const onEnd = () => { if (!active) return; active = false; onDragX = onDragDone = null; card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)'; if (ox > THRESH) { answers[q.label] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; setTimeout(next, 370); } else if (ox < -THRESH) { answers[q.label] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; setTimeout(next, 370); } else { card.style.transform = ''; badgeY.style.opacity = badgeN.style.opacity = 0; emoji.textContent = '🤔'; } };
+  const onEnd = () => {
+    if (!active) return; active = false; onDragX = onDragDone = null;
+    card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+    const doNext = () => { if (memoSheet.classList.contains('open')) { autoTimer = setTimeout(doNext, 500); return; } next(); };
+    if (ox > THRESH) { answers[q.label] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; autoTimer = setTimeout(doNext, 370); }
+    else if (ox < -THRESH) { answers[q.label] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; autoTimer = setTimeout(doNext, 370); }
+    else { card.style.transform = ''; badgeY.style.opacity = badgeN.style.opacity = 0; emoji.textContent = '🤔'; }
+  };
   card.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
   card.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX); }, { passive: false });
   return s;
@@ -326,6 +390,8 @@ function buildDial(q, qi) {
   } else {
     let d; const updateAnswer = () => { answers[q.label] = d.numVal(); }; d = createDrum(q, false, updateAnswer); updateAnswer(); s.appendChild(d.col);
   }
+  const { btn: memoBtn, sheet: memoSheet } = buildMemo(q);
+  s.append(memoBtn, memoSheet);
   const btn = el('button', 'act-btn', isLast ? '送信' : '次へ'); btn.onclick = isLast ? sendAndDone : next; s.appendChild(btn); return s;
 }
 function buildTap(q, qi) {
@@ -340,6 +406,8 @@ function buildTap(q, qi) {
   cont.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
   cont.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX); }, { passive: false });
   s.appendChild(cont);
+  const { btn: memoBtn, sheet: memoSheet } = buildMemo(q);
+  s.append(memoBtn, memoSheet);
   const btn = el('button', 'act-btn', isLast ? '送信' : '次へ'); btn.onclick = () => { if (answers[q.label] == null) { cont.classList.remove('shake'); void cont.offsetWidth; cont.classList.add('shake'); return; } if (isLast) sendAndDone(); else next(); }; s.appendChild(btn); return s;
 }
 function buildMulti(q, qi) {
@@ -347,6 +415,8 @@ function buildMulti(q, qi) {
   const grid = el('div', 'multi-grid');
   q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { chip.classList.toggle('sel'); const arr = answers[q.label]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
   s.appendChild(grid); s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
+  const { btn: memoBtn, sheet: memoSheet } = buildMemo(q);
+  s.append(memoBtn, memoSheet);
   const btn = el('button', 'act-btn', isLast ? '送信' : '次へ'); btn.onclick = isLast ? sendAndDone : next; s.appendChild(btn); return s;
 }
 function buildBurst(q, qi) {
@@ -354,23 +424,45 @@ function buildBurst(q, qi) {
   const maxTaps = q.max || 10; let count = 0, timer = null; answers[q.label] = 0;
   const area = el('div', 'burst-area'); const disp = el('div', 'burst-count-disp', '0'); const lbl = el('div', 'burst-max-lbl', '/ ' + maxTaps);
   const wrap = el('div', 'burst-ring-wrap'); const R = 54, C = 2 * Math.PI * R;
-  wrap.innerHTML = '<svg class="burst-ring-svg" viewBox="0 0 120 120"><circle class="burst-ring-bg" cx="60" cy="60" r="' + R + '"/><circle class="burst-ring-fg" id="burst-fg" cx="60" cy="60" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/></svg>';
+  wrap.innerHTML = '<svg class="burst-ring-svg" viewBox="0 0 120 120"><circle class="burst-ring-bg" cx="60" cy="60" r="' + R + '"/><circle class="burst-ring-fg" id="burst-fg-' + qi + '" cx="60" cy="60" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/></svg>';
   const btn = el('button', 'burst-btn', '👆'); const hint = el('div', 'burst-hint', '2秒で自動送信');
   wrap.appendChild(btn); area.append(disp, lbl, wrap, hint); s.appendChild(area);
-  const fg = () => wrap.querySelector('#burst-fg');
+  const fg = () => wrap.querySelector('#burst-fg-' + qi);
+  let tapTime = null, rafId = null;
+  const animateRing = () => {
+    if (tapTime == null) return;
+    const elapsed = performance.now() - tapTime;
+    const ratio = Math.max(0, 1 - elapsed / 2000);
+    fg().style.strokeDashoffset = C * ratio;
+    if (ratio > 0) rafId = requestAnimationFrame(animateRing);
+    else fg().style.strokeDashoffset = 0;
+  };
   const doTap = () => {
     if (count >= maxTaps) return; count++; answers[q.label] = count; disp.textContent = count;
-    fg().style.strokeDashoffset = C * (1 - Math.min(count / maxTaps, 1));
     btn.classList.remove('burst-pop'); void btn.offsetWidth; btn.classList.add('burst-pop');
     const p = el('div', 'burst-particle', ['✨','⭐','💥','🎉'][count % 4]);
     const angle = Math.random() * 2 * Math.PI; const dist = 60 + Math.random() * 40;
     p.style.setProperty('--dx', Math.cos(angle) * dist + 'px'); p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
     wrap.appendChild(p); setTimeout(() => p.remove(), 700);
-    if (count >= maxTaps) { hint.textContent = '最大！'; clearTimeout(timer); setTimeout(next, 600); return; }
-    clearTimeout(timer); timer = setTimeout(() => { hint.textContent = '送信！'; setTimeout(next, 500); }, 2000);
+    if (count >= maxTaps) {
+      hint.textContent = '最大！'; clearTimeout(timer); cancelAnimationFrame(rafId);
+      fg().style.strokeDashoffset = 0; setTimeout(next, 600); return;
+    }
+    cancelAnimationFrame(rafId); tapTime = performance.now();
+    fg().style.strokeDashoffset = C; rafId = requestAnimationFrame(animateRing);
+    clearTimeout(timer); timer = setTimeout(() => { hint.textContent = '送信！'; cancelAnimationFrame(rafId); setTimeout(next, 500); }, 2000);
   };
   btn.addEventListener('click', doTap);
   btn.addEventListener('touchstart', e => { e.preventDefault(); doTap(); }, { passive: false });
+  const { btn: memoBtn, sheet: memoSheet } = buildMemo(q, () => {
+    clearTimeout(timer); cancelAnimationFrame(rafId); hint.textContent = '書き終えたら次へ';
+    const nextBtn = s.querySelector('.burst-next-btn');
+    if (nextBtn) nextBtn.style.display = '';
+  });
+  const burstNextBtn = el('button', 'act-btn burst-next-btn', isLast ? '送信' : '次へ');
+  burstNextBtn.style.display = 'none';
+  burstNextBtn.onclick = () => { clearTimeout(timer); next(); };
+  s.append(memoBtn, memoSheet, burstNextBtn);
   return s;
 }
 const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst };
