@@ -446,7 +446,7 @@ function buildSwipe(q, qi) {
   const badgeN = el('div', 'swipe-badge badge-no', '✗ いいえ');
   const card = el('div', 'swipe-card'); const emoji = el('div', 'swipe-emoji', '🤔');
   card.appendChild(emoji); zone.append(badgeN, badgeY, card);
-  s.appendChild(zone); s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →　　（PC: ←→ キー）'));
+  s.appendChild(zone); s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →'));
   let autoTimer = null;
   const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q, () => clearTimeout(autoTimer));
   s.append(memoBtn, memoOverlay, memoSheet);
