@@ -185,8 +185,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 /* 設問編集モーダル */
 .eq-modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s ease;}
 .eq-modal-overlay.open{opacity:1;pointer-events:all;}
-.eq-modal{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;z-index:301;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;}
-.eq-modal.open{transform:translateY(0);}
+.eq-modal{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;z-index:301;transform:translateY(100%);transition:transform .35s cubic-bezier(.4,0,.2,1);max-height:88vh;display:flex;flex-direction:column;overflow:hidden;visibility:hidden;pointer-events:none;}
+.eq-modal.open{transform:translateY(0);visibility:visible;pointer-events:all;}
 .eq-modal-grip{width:36px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 6px;flex-shrink:0;}
 .eq-modal-header{display:flex;align-items:center;justify-content:space-between;padding:4px 20px 12px;flex-shrink:0;border-bottom:1px solid var(--border);}
 .eq-form-title{font-size:16px;font-weight:700;color:var(--text);}
