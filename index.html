@@ -143,6 +143,17 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .badge-tap{background:#ff9500;}
 .badge-multi{background:#af52de;}
 .badge-burst{background:#ff2d55;}
+.badge-body{background:#00c7be;}
+/* body 設問タイプ */
+.body-map-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;width:100%;}
+.body-view-toggle{display:flex;gap:6px;}
+.body-view-btn{padding:7px 18px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .15s;touch-action:manipulation;}
+.body-view-btn.sel{background:var(--accent);color:#fff;border-color:var(--accent);}
+.body-svg-wrap{position:relative;width:160px;height:310px;}
+.body-zone{fill:var(--border);stroke:#fff;stroke-width:1.5;cursor:pointer;transition:fill .15s;-webkit-tap-highlight-color:transparent;}
+.body-zone:hover{fill:#c7e0ff;}
+.body-zone.sel{fill:var(--accent);}
+.body-note{font-size:12px;color:var(--sub);letter-spacing:.02em;}
 .screen.done-screen{justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-top:72px;}
 /* メモ */
 .memo-btn{position:absolute;bottom:calc(72px + env(safe-area-inset-bottom) + 12px);left:20px;width:36px;height:36px;border-radius:10px;border:none;background:transparent;font-size:20px;cursor:pointer;color:var(--sub);touch-action:manipulation;transition:color .15s;-webkit-tap-highlight-color:transparent;}
@@ -283,6 +294,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
           <button class="type-tab" data-t="tap">tap</button>
           <button class="type-tab" data-t="multi">multi</button>
           <button class="type-tab" data-t="burst">burst</button>
+          <button class="type-tab" data-t="body">body</button>
         </div>
       </div>
       <div class="form-row">
@@ -576,7 +588,118 @@ function buildBurst(q, qi) {
   s.append(memoBtn, memoOverlay, memoSheet, burstNextBtn);
   return s;
 }
-const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst };
+function buildBody(q, qi) {
+  const isLast = qi === QUESTIONS.length - 1;
+  const s = makeScreen(q, qi);
+  answers[q.label] = [];
+
+  const wrap = el('div', 'body-map-wrap');
+
+  // 前面/背面 切替トグル
+  const toggle = el('div', 'body-view-toggle');
+  const btnFront = el('button', 'body-view-btn sel', '前面');
+  const btnBack  = el('button', 'body-view-btn', '背面');
+  toggle.append(btnFront, btnBack);
+  wrap.appendChild(toggle);
+
+  // SVGラッパー
+  const svgWrap = el('div', 'body-svg-wrap');
+
+  // ゾーン定義: [id, name, SVG要素タグ, 属性オブジェクト]
+  const frontZones = [
+    ['head',   '頭',   'ellipse', {cx:80, cy:28,  rx:22, ry:26}],
+    ['neck',   '首',   'rect',    {x:70,  y:54,   width:20, height:16, rx:6}],
+    ['r-sho',  '右肩', 'ellipse', {cx:42, cy:76,  rx:16, ry:12}],
+    ['l-sho',  '左肩', 'ellipse', {cx:118,cy:76,  rx:16, ry:12}],
+    ['chest',  '胸',   'rect',    {x:55,  y:72,   width:50, height:36, rx:8}],
+    ['abdomen','腹',   'rect',    {x:57,  y:110,  width:46, height:32, rx:8}],
+    ['hips',   '腰',   'rect',    {x:55,  y:144,  width:50, height:28, rx:8}],
+    ['r-uarm', '右上腕','rect',   {x:24,  y:88,   width:16, height:40, rx:7}],
+    ['l-uarm', '左上腕','rect',   {x:120, y:88,   width:16, height:40, rx:7}],
+    ['r-farm', '右前腕','rect',   {x:16,  y:130,  width:14, height:36, rx:6}],
+    ['l-farm', '左前腕','rect',   {x:130, y:130,  width:14, height:36, rx:6}],
+    ['r-hand', '右手', 'ellipse', {cx:23, cy:178,  rx:10, ry:10}],
+    ['l-hand', '左手', 'ellipse', {cx:137,cy:178,  rx:10, ry:10}],
+    ['r-thigh','右太もも','rect', {x:57,  y:174,  width:22, height:50, rx:8}],
+    ['l-thigh','左太もも','rect', {x:81,  y:174,  width:22, height:50, rx:8}],
+    ['r-shin', '右すね','rect',   {x:58,  y:226,  width:19, height:50, rx:7}],
+    ['l-shin', '左すね','rect',   {x:83,  y:226,  width:19, height:50, rx:7}],
+    ['r-foot', '右足', 'rect',    {x:55,  y:278,  width:22, height:14, rx:5}],
+    ['l-foot', '左足', 'rect',    {x:83,  y:278,  width:22, height:14, rx:5}],
+  ];
+  const backZones = [
+    ['b-head',  '頭（後）',  'ellipse', {cx:80, cy:28,  rx:22, ry:26}],
+    ['b-neck',  '首（後）',  'rect',    {x:70,  y:54,   width:20, height:16, rx:6}],
+    ['b-r-sho', '右肩（後）','ellipse', {cx:42, cy:76,  rx:16, ry:12}],
+    ['b-l-sho', '左肩（後）','ellipse', {cx:118,cy:76,  rx:16, ry:12}],
+    ['back',    '背中',      'rect',    {x:55,  y:72,   width:50, height:36, rx:8}],
+    ['b-waist', '腰（後）',  'rect',    {x:57,  y:110,  width:46, height:32, rx:8}],
+    ['b-hips',  '臀部',      'rect',    {x:55,  y:144,  width:50, height:28, rx:8}],
+    ['b-r-uarm','右上腕（後）','rect',  {x:24,  y:88,   width:16, height:40, rx:7}],
+    ['b-l-uarm','左上腕（後）','rect',  {x:120, y:88,   width:16, height:40, rx:7}],
+    ['b-r-farm','右前腕（後）','rect',  {x:16,  y:130,  width:14, height:36, rx:6}],
+    ['b-l-farm','左前腕（後）','rect',  {x:130, y:130,  width:14, height:36, rx:6}],
+    ['b-r-thigh','右太もも（後）','rect',{x:57, y:174,  width:22, height:50, rx:8}],
+    ['b-l-thigh','左太もも（後）','rect',{x:81, y:174,  width:22, height:50, rx:8}],
+    ['b-r-shin','右すね（後）','rect',  {x:58,  y:226,  width:19, height:50, rx:7}],
+    ['b-l-shin','左すね（後）','rect',  {x:83,  y:226,  width:19, height:50, rx:7}],
+  ];
+
+  // noteEl を先に宣言（makeSVG 内のクリックハンドラが参照するため TDZ を回避）
+  const noteEl = el('div', 'body-note', '不調箇所をタップして選択');
+
+  function makeSVG(zones) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 160 295');
+    svg.style.cssText = 'width:160px;height:295px;touch-action:manipulation;';
+    zones.forEach(([id, name, tag, attrs]) => {
+      const el2 = document.createElementNS(NS, tag);
+      el2.setAttribute('class', 'body-zone' + (answers[q.label].includes(name) ? ' sel' : ''));
+      el2.setAttribute('data-name', name);
+      Object.entries(attrs).forEach(([k, v]) => el2.setAttribute(k, v));
+      el2.addEventListener('click', () => {
+        const arr = answers[q.label];
+        const idx = arr.indexOf(name);
+        if (idx >= 0) arr.splice(idx, 1); else arr.push(name);
+        el2.classList.toggle('sel', idx < 0);
+        noteEl.textContent = arr.length > 0 ? arr.join('、') : '不調箇所をタップして選択';
+      });
+      svg.appendChild(el2);
+    });
+    return svg;
+  }
+
+  // 前面・背面 SVG を事前ビルドして表示切替（毎回再生成しない）
+  const svgFront = makeSVG(frontZones);
+  const svgBack  = makeSVG(backZones);
+  svgBack.style.display = 'none';
+  svgWrap.append(svgFront, svgBack);
+  wrap.appendChild(svgWrap);
+  wrap.appendChild(noteEl);
+
+  btnFront.onclick = () => {
+    if (svgFront.style.display !== 'none') return;
+    btnFront.classList.add('sel'); btnBack.classList.remove('sel');
+    svgFront.style.display = ''; svgBack.style.display = 'none';
+  };
+  btnBack.onclick = () => {
+    if (svgBack.style.display !== 'none') return;
+    btnBack.classList.add('sel'); btnFront.classList.remove('sel');
+    svgBack.style.display = ''; svgFront.style.display = 'none';
+  };
+
+  s.appendChild(wrap);
+
+  const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
+  s.append(memoBtn, memoOverlay, memoSheet);
+
+  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ');
+  btn.onclick = isLast ? goToDone : next;
+  s.appendChild(btn);
+  return s;
+}
+const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst, body: buildBody };
 function buildAll() {
   const cont = document.getElementById('screens'); cont.innerHTML = '';
   QUESTIONS.forEach((q, i) => { const builder = BUILDERS[q.type]; if (!builder) { console.warn('[checkin] Unknown type:', q.type); return; } cont.appendChild(builder(q, i)); });
@@ -791,6 +914,7 @@ const EQ_TYPE_PARAMS = {
   tap: () => `<div class="form-row-grid"><div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="1"></div><div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="5"></div></div>`,
   multi: () => `<div class="form-row"><label class="form-label">選択肢（カンマ区切り）</label><input class="form-input" id="ep-options" type="text" placeholder="例：カロリー, タンパク質, 野菜, 水分"></div>`,
   burst: () => `<div class="form-row"><label class="form-label">最大連打数</label><input class="form-input" id="ep-max" type="number" value="10" min="1"><div class="form-hint" style="font-size:12px;color:var(--sub);margin-top:5px;">この回数に達すると自動で次へ進みます</div></div>`,
+  body:  () => '',
 };
 
 function openEditForm(idx) {
@@ -849,6 +973,7 @@ const EQ_LABEL_PLACEHOLDERS = {
   tap:   '例：睡眠の質、気分スコア',
   multi: '例：今日意識できた食事',
   burst: '例：今日のワクワク度',
+  body:  '例：不調箇所',
 };
 function renderEditTypeParams() {
   const cont = document.getElementById('eq-type-params');
