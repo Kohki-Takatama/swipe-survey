@@ -281,6 +281,34 @@ window.addEventListener('touchmove', e => {
   if (onDragX || onDragY) { e.preventDefault(); onDragX?.(e.touches[0].clientX); onDragY?.(e.touches[0].clientY); }
 }, { passive: false });
 window.addEventListener('touchend', () => onDragDone?.());
+window.addEventListener('keydown', e => {
+  // テキスト入力中・設問外では無視
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  // ドラッグ操作中は無視（double-next 防止）
+  if (onDragX !== null) return;
+  // 現在の設問が swipe タイプか確認
+  if (curIdx >= QUESTIONS.length || QUESTIONS[curIdx].type !== 'swipe') return;
+  const screens = document.querySelectorAll('.screen');
+  const screen = screens[curIdx];
+  if (!screen || !screen.classList.contains('active')) return;
+  const card = screen.querySelector('.swipe-card');
+  const emoji = screen.querySelector('.swipe-emoji');
+  if (!card || card.style.transform.includes('600px') || card.style.transform.includes('-600px')) return; // すでに飛んでいたら無視
+  const q = QUESTIONS[curIdx];
+  e.preventDefault();
+  card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
+  if (e.key === 'ArrowRight') {
+    answers[q.label] = 'はい';
+    if (emoji) emoji.textContent = '😄';
+    card.style.transform = 'translateX(600px) rotate(28deg)';
+  } else {
+    answers[q.label] = 'いいえ';
+    if (emoji) emoji.textContent = '😔';
+    card.style.transform = 'translateX(-600px) rotate(-28deg)';
+  }
+  setTimeout(next, 370);
+});
 
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const clamp    = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -385,7 +413,7 @@ function buildSwipe(q, qi) {
   const badgeN = el('div', 'swipe-badge badge-no', '✗ いいえ');
   const card = el('div', 'swipe-card'); const emoji = el('div', 'swipe-emoji', '🤔');
   card.appendChild(emoji); zone.append(badgeN, badgeY, card);
-  s.appendChild(zone); s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →'));
+  s.appendChild(zone); s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →　　（PC: ←→ キー）'));
   let autoTimer = null;
   const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q, () => clearTimeout(autoTimer));
   s.append(memoBtn, memoOverlay, memoSheet);
