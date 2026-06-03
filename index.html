@@ -703,18 +703,18 @@ const EQ_TYPE_PARAMS = {
 </div>
 <div class="form-row-grid">
   <div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="ep-step" type="number" value="1" step="any"></div>
-  <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit" type="text" placeholder="kg…"></div>
+  <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit" type="text" placeholder="例：kg、時間、kcal など"></div>
 </div>
 <div class="form-row" style="margin-top:6px;">
   <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--sub);cursor:pointer;">
     <input type="checkbox" id="ep-dial2-enable" onchange="document.getElementById('ep-dial2-fields').style.display=this.checked?'block':'none';" style="width:18px;height:18px;accent-color:var(--accent);">
-    第2ダイヤルを追加（例: 時間.分、整数.小数）
+    第2ダイヤルを追加（例：時間.分、整数.小数）
   </label>
 </div>
 <div id="ep-dial2-fields" style="display:none;margin-top:10px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1.5px solid var(--border);">
   <div class="form-row" style="margin-bottom:10px;">
     <label class="form-label">区切り文字</label>
-    <input class="form-input" id="ep-separator" type="text" value="." placeholder="例: .(小数点), :(コロン)" style="max-width:140px;">
+    <input class="form-input" id="ep-separator" type="text" value="." placeholder="例：.（小数点）、:（コロン）" style="max-width:160px;">
   </div>
   <div class="form-row-grid">
     <div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min2" type="number" value="0"></div>
@@ -722,12 +722,12 @@ const EQ_TYPE_PARAMS = {
   </div>
   <div class="form-row-grid">
     <div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="ep-step2" type="number" value="1" step="any"></div>
-    <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit2" type="text" placeholder="省略可"></div>
+    <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit2" type="text" placeholder="例：分、g（省略可）"></div>
   </div>
 </div>`,
   tap: () => `<div class="form-row-grid"><div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="1"></div><div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="5"></div></div>`,
-  multi: () => `<div class="form-row"><label class="form-label">選択肢（カンマ区切り）</label><input class="form-input" id="ep-options" type="text" placeholder="カロリー, タンパク質, 野菜"></div>`,
-  burst: () => `<div class="form-row"><label class="form-label">最大連打数</label><input class="form-input" id="ep-max" type="number" value="10" min="1"></div>`,
+  multi: () => `<div class="form-row"><label class="form-label">選択肢（カンマ区切り）</label><input class="form-input" id="ep-options" type="text" placeholder="例：カロリー, タンパク質, 野菜, 水分"></div>`,
+  burst: () => `<div class="form-row"><label class="form-label">最大連打数</label><input class="form-input" id="ep-max" type="number" value="10" min="1"><div class="form-hint" style="font-size:12px;color:var(--sub);margin-top:5px;">この回数に達すると自動で次へ進みます</div></div>`,
 };
 
 function openEditForm(idx) {
@@ -780,9 +780,18 @@ function closeEditForm() {
   document.getElementById('eq-add-form').classList.add('hidden');
 }
 
+const EQ_LABEL_PLACEHOLDERS = {
+  swipe: '例：今日は調子がいい',
+  dial:  '例：体重、睡眠時間',
+  tap:   '例：睡眠の質、気分スコア',
+  multi: '例：今日意識できた食事',
+  burst: '例：今日のワクワク度',
+};
 function renderEditTypeParams() {
   const cont = document.getElementById('eq-type-params');
   if (cont) cont.innerHTML = EQ_TYPE_PARAMS[editSelectedType]?.() || '';
+  const labelInput = document.getElementById('eq-label');
+  if (labelInput && !labelInput.value) labelInput.placeholder = EQ_LABEL_PLACEHOLDERS[editSelectedType] || '例：設問テキスト';
 }
 
 function confirmEditForm() {
