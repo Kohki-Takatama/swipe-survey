@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────
 //  Daily Check-in — Google Apps Script
 //  doPost: type=answer（回答記録）/ type=config（設問保存）
-//  doGet:  ?action=config（設問取得）
+//  doGet:  ?action=config（設問取得）/ ?action=last-answer（最終回答日時取得）
 // ─────────────────────────────────────────────────────────────
 const SHEET_CHECKIN = 'checkin';
 const SHEET_CONFIG  = 'config';
@@ -10,6 +10,9 @@ function doGet(e) {
   try {
     if (e && e.parameter && e.parameter.action === 'config') {
       return getConfig();
+    }
+    if (e && e.parameter && e.parameter.action === 'last-answer') {
+      return getLastAnswer();
     }
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'ok', message: 'Daily Check-in GAS is running.' }))
@@ -46,6 +49,22 @@ function getConfig() {
   const config = JSON.parse(json || '{}');
   return ContentService
     .createTextOutput(JSON.stringify({ status: 'ok', config: { ...config, version, updatedAt } }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── 最終回答日時取得 ──
+function getLastAnswer() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEET_CHECKIN);
+  const lastRow = sheet ? sheet.getLastRow() : 0;
+  if (lastRow <= 1) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok', lastAnswer: null }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  const timestamp = sheet.getRange(lastRow, 1).getDisplayValue();
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'ok', lastAnswer: timestamp }))
     .setMimeType(ContentService.MimeType.JSON);
 }
 
