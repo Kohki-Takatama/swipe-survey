@@ -174,10 +174,25 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .settings-value-url{font-size:12px;color:var(--sub);word-break:break-all;margin-bottom:10px;line-height:1.5;}
 .settings-edit-btn{padding:9px 18px;border-radius:10px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;}
 #settings-btn { display: none !important; }
+#splash-screen{position:absolute;inset:0;background:var(--bg);z-index:350;display:flex;align-items:center;justify-content:center;opacity:1;transition:opacity .35s ease;}
+#splash-screen.fade-out{opacity:0;pointer-events:none;}
+#splash-screen.hidden{display:none;}
+.splash-inner{display:flex;flex-direction:column;align-items:center;gap:12px;}
+.splash-icon{font-size:64px;animation:splash-pop .4s cubic-bezier(.34,1.56,.64,1);}
+.splash-title{font-size:24px;font-weight:800;color:var(--text);letter-spacing:.02em;}
+.splash-sub{font-size:14px;color:var(--sub);}
+@keyframes splash-pop{0%{transform:scale(.6);opacity:0;}100%{transform:scale(1);opacity:1;}}
 </style>
 </head>
 <body>
 <div id="app">
+  <div id="splash-screen">
+    <div class="splash-inner">
+      <div class="splash-icon">✅</div>
+      <div class="splash-title">Daily Check-in</div>
+      <div class="splash-sub">毎日の記録</div>
+    </div>
+  </div>
   <div id="pbar"><div id="pfill"></div></div>
   <div id="update-banner" onclick="applyCloudUpdate()">設問が更新されました ↻ タップして反映</div>
   <button id="settings-btn" onclick="showSetupScreen(true)">⚙️</button>
@@ -874,12 +889,25 @@ document.querySelectorAll('#eq-type-tabs .type-tab').forEach(tab => {
 });
 document.getElementById('eq-add-btn').onclick = () => openEditForm(null);
 
-// 初期化
+// 初期化（スプラッシュ画面を表示し、GASロードを並行実行）
 document.getElementById('cloud-overlay').classList.add('hidden');
+
+function hideSplash() {
+  const s = document.getElementById('splash-screen');
+  s.classList.add('fade-out');
+  // transitionend が発火しない環境（prefers-reduced-motion等）向けのフォールバック
+  const done = () => s.classList.add('hidden');
+  s.addEventListener('transitionend', done, { once: true });
+  setTimeout(done, 400);
+}
+
 if (!GAS_URL) {
-  showSetupScreen(false);
+  // GAS URL未設定: スプラッシュ後にセットアップ画面へ
+  setTimeout(() => { hideSplash(); showSetupScreen(false); }, 500);
 } else {
+  // GAS URL設定済み: 裏側でGASロード開始し、0.5秒後にスプラッシュを消す
   initCloud();
+  setTimeout(hideSplash, 500);
 }
 </script>
 </body>
