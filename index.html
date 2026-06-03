@@ -556,9 +556,16 @@ function saveGasUrl() {
   const input = document.getElementById('gas-url-input').value.trim();
   const err = document.getElementById('setup-err');
   if (!input.startsWith('https://')) { err.textContent = '正しい URL を入力してください'; return; }
+  const urlChanged = input !== GAS_URL;
   err.textContent = ''; GAS_URL = input;
   try { localStorage.setItem(GAS_URL_KEY, GAS_URL); } catch(e) {}
-  hideSetupScreen(); if (QUESTIONS.length === 0) initCloud();
+  hideSetupScreen();
+  if (urlChanged || QUESTIONS.length === 0) {
+    // URL 変更時は設問キャッシュをクリアして再取得
+    QUESTIONS.length = 0;
+    try { localStorage.removeItem('daily_checkin.questions_cache'); } catch(e) {}
+    initCloud();
+  }
 }
 const QC_KEY = 'daily_checkin.questions_cache';
 let _pendingQuestions = null;

@@ -45,6 +45,13 @@
 - **バックエンド**: Google Apps Script（Web App）
 - **データストア**: Google スプレッドシート
 
+## Claude 開発ルール
+
+### ブランチへの push 前に必ず確認すること
+ブランチに push する前に、**そのブランチが既に main にマージ済みでないか**を確認すること。
+確認コマンド: `gh pr view <PR番号> --json state,mergedAt` または `git log --oneline origin/main | grep <ブランチ名>`
+マージ済みのブランチに push すると意図しない履歴汚染が起きる。マージ済みの場合は新しいブランチを切ること。
+
 ## 今後の検討事項
 
 - [ ] 設問を実生活に合わせてチューニング
