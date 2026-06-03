@@ -1,91 +1,93 @@
 // ─────────────────────────────────────────────────────────────
-//  Daily Check-in — Google Apps Script (doPost)
-//
-//  デプロイ手順:
-//    1. スプレッドシートを開く → 拡張機能 → Apps Script
-//    2. このコードを貼り付けて保存
-//    3. デプロイ → 新しいデプロイ → 種類: ウェブアプリ
-//       ・次のユーザーとして実行: 自分
-//       ・アクセスできるユーザー: 全員
-//    4. 発行された URL を daily-checkin.html の GAS_URL に設定
+//  Daily Check-in — Google Apps Script
+//  doPost: type=answer（回答記録）/ type=config（設問保存）
+//  doGet:  ?action=config（設問取得）
 // ─────────────────────────────────────────────────────────────
+const SHEET_CHECKIN = 'checkin';
+const SHEET_CONFIG  = 'config';
 
-// ▼ 書き込み先シート名（変更可）
-const SHEET_NAME = 'checkin';
-
-/**
- * POST リクエストを受け取ってスプレッドシートに記録する
- * 受信 JSON: { timestamp: string, answers: { [label]: value } }
- */
-function doPost(e) {
+function doGet(e) {
   try {
-    // JSON パース
-    const payload = JSON.parse(e.postData.contents);
-    const timestamp = payload.timestamp || new Date().toLocaleString('ja-JP');
-    const answers   = payload.answers   || {};
-
-    // スプレッドシート取得
-    const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    let sheet   = ss.getSheetByName(SHEET_NAME);
-
-    // シートが無ければ作成
-    if (!sheet) {
-      sheet = ss.insertSheet(SHEET_NAME);
+    if (e && e.parameter && e.parameter.action === 'config') {
+      return getConfig();
     }
-
-    // ── ヘッダー管理 ──────────────────────────────
-    // 1行目が空 → 新規ヘッダーを書く
-    // 1行目がある → 既存列に合わせ、新しいキーがあれば末尾に追加
-    const answerKeys = Object.keys(answers);
-    const allKeys    = ['timestamp', ...answerKeys];
-
-    let headers;
-    if (sheet.getLastRow() === 0) {
-      // シートが空: ヘッダー行を書く
-      sheet.appendRow(allKeys);
-      headers = allKeys;
-    } else {
-      // 既存ヘッダーを読む
-      const headerRange = sheet.getRange(1, 1, 1, sheet.getLastColumn());
-      headers = headerRange.getValues()[0].map(String);
-
-      // 新しいキーがあれば末尾に追加
-      answerKeys.forEach(key => {
-        if (!headers.includes(key)) {
-          headers.push(key);
-          sheet.getRange(1, headers.length).setValue(key);
-        }
-      });
-    }
-
-    // ── データ行を組み立て ─────────────────────────
-    // ヘッダー順に値を並べる（項目が無い場合は空文字）
-    const row = headers.map(h => {
-      if (h === 'timestamp') return timestamp;
-      return answers[h] !== undefined ? answers[h] : '';
-    });
-
-    sheet.appendRow(row);
-
-    // 成功レスポンス
     return ContentService
-      .createTextOutput(JSON.stringify({ status: 'ok', rows: sheet.getLastRow() - 1 }))
+      .createTextOutput(JSON.stringify({ status: 'ok', message: 'Daily Check-in GAS is running.' }))
       .setMimeType(ContentService.MimeType.JSON);
-
   } catch (err) {
-    // エラーレスポンス
     return ContentService
       .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
-/**
- * GETアクセスで動作確認できる簡易エンドポイント
- * ブラウザで URL を開いて {"status":"ok"} が返れば正常
- */
-function doGet() {
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
+    if (payload.type === 'config') return saveConfig(payload);
+    return saveAnswer(payload);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// ── 設問取得 ──
+function getConfig() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_CONFIG);
+  if (!sheet || sheet.getLastRow() < 2) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok', config: { questions: [], version: 0 } }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  const [[json, updatedAt, version]] = sheet.getRange('A2:C2').getValues();
+  const config = JSON.parse(json || '{}');
   return ContentService
-    .createTextOutput(JSON.stringify({ status: 'ok', message: 'Daily Check-in GAS is running.' }))
+    .createTextOutput(JSON.stringify({ status: 'ok', config: { ...config, version, updatedAt } }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── 設問保存 ──
+function saveConfig(payload) {
+  const secret = PropertiesService.getScriptProperties().getProperty('CONFIG_SECRET');
+  if (secret != null && secret !== '' && payload.secret !== secret) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: 'unauthorized' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_CONFIG);
+  if (!sheet) { sheet = ss.insertSheet(SHEET_CONFIG); sheet.appendRow(['config_json', 'updatedAt', 'version']); }
+  const version   = (sheet.getLastRow() >= 2 ? (sheet.getRange('C2').getValue() || 0) : 0) + 1;
+  const updatedAt = new Date().toISOString();
+  const json      = JSON.stringify(payload.config || {});
+  if (sheet.getLastRow() < 2) { sheet.appendRow([json, updatedAt, version]); }
+  else { sheet.getRange('A2').setValue(json); sheet.getRange('B2').setValue(updatedAt); sheet.getRange('C2').setValue(version); }
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'ok', version, updatedAt }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ── 回答記録 ──
+function saveAnswer(payload) {
+  const timestamp = payload.timestamp || new Date().toLocaleString('ja-JP');
+  const answers   = payload.answers   || {};
+  const ss    = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet   = ss.getSheetByName(SHEET_CHECKIN);
+  if (!sheet) sheet = ss.insertSheet(SHEET_CHECKIN);
+  const answerKeys = Object.keys(answers);
+  const allKeys    = ['timestamp', ...answerKeys];
+  let headers;
+  if (sheet.getLastRow() === 0) { sheet.appendRow(allKeys); headers = allKeys; }
+  else {
+    headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String);
+    answerKeys.forEach(key => { if (!headers.includes(key)) { headers.push(key); sheet.getRange(1, headers.length).setValue(key); } });
+  }
+  const row = headers.map(h => h === 'timestamp' ? timestamp : (answers[h] !== undefined ? answers[h] : ''));
+  sheet.appendRow(row);
+  return ContentService
+    .createTextOutput(JSON.stringify({ status: 'ok', rows: sheet.getLastRow() - 1 }))
     .setMimeType(ContentService.MimeType.JSON);
 }
