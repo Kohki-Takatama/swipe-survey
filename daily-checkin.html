@@ -12,55 +12,27 @@
 }
 html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue',sans-serif;background:var(--bg);color:var(--text);}
 #app{width:100%;max-width:430px;height:100%;margin:0 auto;position:relative;overflow:hidden;}
-
-/* ── Progress ── */
 #pbar{position:absolute;top:0;left:0;right:0;height:3px;background:var(--border);z-index:99;}
 #pfill{height:100%;background:var(--accent);transition:width .45s ease;width:0;}
-
-/* ── Screens ── */
-.screen{
-  position:absolute;inset:0;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;padding:56px 28px 72px;
-  opacity:0;transform:translateX(100%);
-  transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .38s ease;
-  pointer-events:none;
-}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 28px calc(72px + env(safe-area-inset-bottom));opacity:0;transform:translateX(100%);transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .38s ease;pointer-events:none;}
 .screen.active{opacity:1;transform:translateX(0);pointer-events:all;}
 .screen.leaving{opacity:0;transform:translateX(-48px);}
-
-/* ── Header ── */
 .q-num{font-size:13px;color:var(--sub);letter-spacing:.06em;margin-bottom:14px;font-weight:500;}
 .q-text{font-size:22px;font-weight:700;text-align:center;line-height:1.45;margin-bottom:48px;}
-
-/* ── Swipe ── */
 .swipe-zone{width:100%;height:230px;position:relative;display:flex;align-items:center;justify-content:center;}
-.swipe-badge{
-  position:absolute;top:50%;transform:translateY(-50%);
-  font-size:14px;font-weight:700;letter-spacing:.04em;
-  opacity:0;transition:opacity .1s;pointer-events:none;
-  padding:8px 16px;border-radius:10px;
-}
+.swipe-badge{position:absolute;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;letter-spacing:.04em;opacity:0;transition:opacity .1s;pointer-events:none;padding:8px 16px;border-radius:10px;}
 .badge-yes{right:8px;color:var(--green);background:rgba(52,199,89,.12);}
 .badge-no{left:8px;color:var(--red);background:rgba(255,59,48,.12);}
-.swipe-card{
-  width:230px;height:190px;background:var(--card);border-radius:28px;
-  box-shadow:0 10px 36px rgba(0,0,0,.09),0 2px 8px rgba(0,0,0,.04);
-  display:flex;align-items:center;justify-content:center;
-  cursor:grab;user-select:none;touch-action:none;
-  position:relative;z-index:2;will-change:transform;
-}
+.swipe-card{width:230px;height:190px;background:var(--card);border-radius:28px;box-shadow:0 10px 36px rgba(0,0,0,.09),0 2px 8px rgba(0,0,0,.04);display:flex;align-items:center;justify-content:center;cursor:grab;user-select:none;touch-action:none;position:relative;z-index:2;will-change:transform;}
 .swipe-card:active{cursor:grabbing;}
 .swipe-emoji{font-size:54px;pointer-events:none;}
 .swipe-guide{font-size:13px;color:var(--sub);margin-top:20px;letter-spacing:.02em;}
-
-/* ── Dial / Drum ── */
+.dial-row{display:flex;align-items:flex-start;justify-content:center;gap:4px;}
+.dial-sep{font-size:24px;font-weight:700;color:var(--sub);height:280px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .drum-col{display:flex;flex-direction:column;align-items:center;gap:10px;}
 .drum-wrap{width:200px;height:280px;position:relative;overflow:hidden;cursor:ns-resize;touch-action:none;user-select:none;}
-.drum-hl{
-  position:absolute;top:50%;left:12px;right:12px;transform:translateY(-50%);
-  height:56px;border-radius:14px;background:rgba(0,122,255,.07);border:1.5px solid var(--accent);
-  pointer-events:none;z-index:2;
-}
+.drum-wrap.compact{width:120px;}
+.drum-hl{position:absolute;top:50%;left:12px;right:12px;transform:translateY(-50%);height:56px;border-radius:14px;background:rgba(0,122,255,.07);border:1.5px solid var(--accent);pointer-events:none;z-index:2;}
 .drum-fade{position:absolute;left:0;right:0;pointer-events:none;z-index:3;}
 .drum-fade.top{top:0;height:96px;background:linear-gradient(to bottom,var(--bg) 20%,transparent);}
 .drum-fade.bot{bottom:0;height:96px;background:linear-gradient(to top,var(--bg) 20%,transparent);}
@@ -68,88 +40,189 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .drum-item{height:56px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:var(--sub);pointer-events:none;}
 .drum-item.sel{font-size:28px;font-weight:700;color:var(--text);}
 .drum-unit{font-size:15px;color:var(--sub);font-weight:500;}
-
-/* ── Tap ── */
 .tap-row{display:flex;gap:10px;}
-.tap-btn{
-  width:58px;height:58px;border-radius:18px;border:2px solid var(--border);
-  background:var(--card);font-size:19px;font-weight:600;color:var(--sub);
-  cursor:pointer;display:flex;align-items:center;justify-content:center;
-  transition:all .18s cubic-bezier(.34,1.56,.64,1);
-  box-shadow:0 2px 6px rgba(0,0,0,.06);outline:none;touch-action:manipulation;
-}
+.tap-btn{width:58px;height:58px;border-radius:18px;border:2px solid var(--border);background:var(--card);font-size:19px;font-weight:600;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s cubic-bezier(.34,1.56,.64,1);box-shadow:0 2px 6px rgba(0,0,0,.06);outline:none;touch-action:manipulation;}
 .tap-btn:active{transform:scale(.91);}
 .tap-btn.sel{background:var(--accent);border-color:var(--accent);color:#fff;transform:scale(1.13);box-shadow:0 6px 20px rgba(0,122,255,.38);}
-
-/* ── Multi ── */
 .multi-grid{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:320px;}
-.multi-chip{
-  padding:10px 20px;border-radius:20px;border:2px solid var(--border);
-  background:var(--card);font-size:15px;color:var(--sub);cursor:pointer;
-  transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.05);outline:none;touch-action:manipulation;
-}
+.multi-chip{padding:10px 20px;border-radius:20px;border:2px solid var(--border);background:var(--card);font-size:15px;color:var(--sub);cursor:pointer;transition:all .15s;box-shadow:0 2px 6px rgba(0,0,0,.05);outline:none;touch-action:manipulation;}
 .multi-chip.sel{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 4px 14px rgba(0,122,255,.3);}
 .multi-note{font-size:12px;color:var(--sub);margin-top:16px;letter-spacing:.02em;}
-
-/* ── Action button ── */
-.act-btn{
-  background:var(--accent);color:#fff;border:none;border-radius:18px;
-  padding:17px 60px;font-size:17px;font-weight:600;cursor:pointer;
-  margin-top:52px;letter-spacing:.02em;
-  transition:transform .12s,box-shadow .15s;
-  box-shadow:0 4px 18px rgba(0,122,255,.32);outline:none;touch-action:manipulation;
-}
+.scrub-container{width:100%;background:var(--border);border-radius:18px;position:relative;height:68px;touch-action:none;user-select:none;}
+.scrub-indicator{position:absolute;height:60px;top:4px;border-radius:14px;background:var(--accent);box-shadow:0 4px 16px rgba(0,122,255,.38);pointer-events:none;opacity:0;transition:left .1s;}
+.scrub-items{display:flex;height:100%;position:relative;z-index:1;}
+.scrub-item{flex:1;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;color:var(--sub);transition:color .12s,transform .12s;pointer-events:none;}
+.scrub-item.sel{color:#fff;transform:scale(1.12);}
+.burst-area{display:flex;flex-direction:column;align-items:center;gap:14px;}
+.burst-count-disp{font-size:60px;font-weight:800;color:var(--text);line-height:1;text-align:center;}
+.burst-max-lbl{font-size:14px;color:var(--sub);margin-top:-6px;text-align:center;}
+.burst-ring-wrap{position:relative;width:120px;height:120px;flex-shrink:0;}
+.burst-ring-svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.burst-ring-bg{fill:none;stroke:var(--border);stroke-width:5;}
+.burst-ring-fg{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round;}
+.burst-btn{position:absolute;inset:8px;border-radius:50%;border:none;background:var(--accent);color:#fff;font-size:40px;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;outline:none;box-shadow:0 6px 22px rgba(0,122,255,.35);transition:transform .08s;}
+.burst-btn:active{transform:scale(.86);}
+.burst-hint{font-size:13px;color:var(--sub);letter-spacing:.02em;min-height:1.5em;text-align:center;}
+.burst-particle{position:absolute;font-size:24px;pointer-events:none;left:50%;top:50%;animation:burst-fly .65s ease-out forwards;}
+@keyframes burst-fly{0%{transform:translate(-50%,-50%) scale(1);opacity:1;}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(.2);opacity:0;}}
+@keyframes burst-pop{0%,100%{transform:scale(1);}50%{transform:scale(1.25);}}
+.burst-pop{animation:burst-pop .13s ease;}
+.act-btn{background:var(--accent);color:#fff;border:none;border-radius:18px;padding:17px 60px;font-size:17px;font-weight:600;cursor:pointer;margin-top:52px;letter-spacing:.02em;transition:transform .12s,box-shadow .15s;box-shadow:0 4px 18px rgba(0,122,255,.32);outline:none;touch-action:manipulation;}
 .act-btn:active{transform:scale(.96);}
-
-/* ── Complete ── */
 .done-wrap{text-align:center;width:100%;display:flex;flex-direction:column;align-items:center;}
 .done-icon{font-size:72px;margin-bottom:24px;}
 .done-title{font-size:28px;font-weight:800;margin-bottom:10px;}
-.done-sub{font-size:15px;color:var(--sub);margin-bottom:28px;line-height:1.7;}
+.done-sub{font-size:15px;color:var(--sub);margin-bottom:28px;line-height:1.7;white-space:pre-line;}
 .done-answers{background:var(--card);border-radius:18px;padding:4px 24px;margin-bottom:36px;width:100%;max-width:300px;box-shadow:0 2px 10px rgba(0,0,0,.06);}
 .done-row{display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);font-size:15px;}
 .done-row:last-child{border-bottom:none;}
 .done-key{color:var(--sub);}
 .done-val{font-weight:600;}
-.reset-btn{
-  background:transparent;color:var(--accent);border:2px solid var(--accent);
-  border-radius:16px;padding:14px 44px;font-size:16px;font-weight:600;
-  cursor:pointer;outline:none;transition:background .15s;touch-action:manipulation;
-}
+.reset-btn{background:transparent;color:var(--accent);border:2px solid var(--accent);border-radius:16px;padding:14px 44px;font-size:16px;font-weight:600;cursor:pointer;outline:none;transition:background .15s;touch-action:manipulation;}
 .reset-btn:active{background:rgba(0,122,255,.08);}
-
 @keyframes shake{0%,100%{transform:translateX(0);}20%{transform:translateX(-8px);}40%{transform:translateX(8px);}60%{transform:translateX(-6px);}80%{transform:translateX(6px);}}
 .shake{animation:shake .3s ease;}
+#update-banner{position:absolute;top:3px;left:0;right:0;z-index:98;background:var(--accent);color:#fff;font-size:13px;font-weight:600;letter-spacing:.02em;padding:10px 16px;text-align:center;cursor:pointer;transform:translateY(-100%);transition:transform .35s cubic-bezier(.4,0,.2,1);}
+#update-banner.show{transform:translateY(0);}
+#cloud-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;background:var(--bg);z-index:100;padding-bottom:calc(56px + env(safe-area-inset-bottom));}
+#cloud-overlay.hidden{display:none;}
+.cloud-spinner{width:36px;height:36px;border-radius:50%;border:3px solid var(--border);border-top-color:var(--accent);animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.cloud-msg{font-size:15px;color:var(--sub);}
+.cloud-retry{margin-top:8px;padding:13px 36px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;}
+#setup-screen{position:absolute;inset:0;background:var(--bg);z-index:200;display:flex;align-items:center;justify-content:center;padding:32px 32px calc(32px + 56px + env(safe-area-inset-bottom));}
+#setup-screen.hidden{display:none;}
+.setup-inner{width:100%;max-width:320px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.setup-icon{font-size:48px;}
+.setup-title{font-size:20px;font-weight:700;}
+.setup-desc{font-size:14px;color:var(--sub);text-align:center;line-height:1.7;}
+.setup-input{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:14px;font-size:13px;background:var(--card);color:var(--text);outline:none;}
+.setup-input:focus{border-color:var(--accent);}
+.setup-btn{width:100%;padding:16px;background:var(--accent);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;}
+.setup-err{font-size:13px;color:var(--red);min-height:1.4em;}
+#settings-btn{position:absolute;top:10px;right:12px;font-size:17px;opacity:0.25;cursor:pointer;background:none;border:none;z-index:97;padding:6px;color:var(--text);}
+/* ボトムタブバー */
+#tab-bar{position:absolute;bottom:0;left:0;right:0;height:calc(56px + env(safe-area-inset-bottom));background:rgba(242,242,247,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;z-index:96;padding-bottom:env(safe-area-inset-bottom);}
+.tab-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:transparent;color:var(--sub);font-size:10px;font-weight:500;cursor:pointer;transition:color .15s;padding:0;outline:none;-webkit-tap-highlight-color:transparent;}
+.tab-btn.active{color:var(--accent);}
+.tab-icon{font-size:20px;line-height:1;}
+.tab-label{font-size:10px;letter-spacing:.03em;}
+/* 編集パネル */
+#edit-panel{position:absolute;inset:0;bottom:calc(56px + env(safe-area-inset-bottom));background:var(--bg);z-index:90;display:flex;flex-direction:column;overflow:hidden;}
+#edit-panel.hidden{display:none;}
+.edit-loading{display:flex;align-items:center;justify-content:center;gap:12px;padding:40px;color:var(--sub);}
+.edit-loading.hidden{display:none;}
+#edit-content{flex:1;overflow-y:auto;padding:16px 16px 8px;}
+#edit-footer{padding:12px 16px;border-top:1px solid var(--border);background:var(--card);}
+.eq-card{display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:12px 14px;border:1.5px solid var(--border);margin-bottom:10px;}
+.eq-badge{font-size:11px;font-weight:700;letter-spacing:.04em;padding:4px 8px;border-radius:6px;color:#fff;white-space:nowrap;flex-shrink:0;}
+.eq-label{flex:1;font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.eq-meta{font-size:12px;color:var(--sub);flex-shrink:0;}
+.eq-controls{display:flex;gap:4px;flex-shrink:0;}
+.icon-btn{width:30px;height:30px;border-radius:8px;border:none;background:transparent;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--sub);}
+.icon-btn.del{color:#ff3b30;}
+.add-btn{width:100%;padding:14px;border-radius:14px;border:2px dashed var(--border);background:transparent;color:var(--accent);font-size:15px;font-weight:600;cursor:pointer;margin-top:4px;}
+.eq-form{background:var(--card);border-radius:18px;padding:16px;margin-top:12px;}
+.eq-form.hidden{display:none;}
+.form-row{margin-bottom:12px;}
+.form-label{font-size:13px;font-weight:600;color:var(--sub);margin-bottom:6px;display:block;}
+.form-input,.form-select{width:100%;padding:11px 14px;border-radius:12px;border:1.5px solid var(--border);font-size:15px;color:var(--text);background:var(--bg);outline:none;-webkit-appearance:none;}
+.form-input:focus,.form-select:focus{border-color:var(--accent);}
+.form-row-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
+.type-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px;}
+.type-tab{padding:7px 14px;border-radius:10px;border:1.5px solid var(--border);background:var(--bg);font-size:13px;font-weight:600;cursor:pointer;color:var(--sub);}
+.type-tab.sel{color:#fff;border-color:transparent;background:var(--accent);}
+.form-actions{display:flex;gap:10px;margin-top:14px;}
+.btn-confirm{flex:1;padding:13px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;}
+.btn-cancel{padding:13px 18px;border-radius:14px;border:1.5px solid var(--border);background:transparent;color:var(--sub);font-size:15px;font-weight:600;cursor:pointer;}
+.eq-save-btn{width:100%;padding:15px;border-radius:14px;border:none;background:var(--accent);color:#fff;font-size:16px;font-weight:600;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,.3);}
+.eq-save-btn:disabled{opacity:.5;cursor:default;}
+.eq-empty{text-align:center;color:var(--sub);font-size:14px;padding:32px 0;}
+.badge-swipe{background:#34c759;}
+.badge-dial{background:#007aff;}
+.badge-tap{background:#ff9500;}
+.badge-multi{background:#af52de;}
+.badge-burst{background:#ff2d55;}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="pbar"><div id="pfill"></div></div>
+  <div id="update-banner" onclick="applyCloudUpdate()">設問が更新されました ↻ タップして反映</div>
+  <button id="settings-btn" onclick="showSetupScreen(true)">⚙️</button>
   <div id="screens"></div>
+  <div id="cloud-overlay">
+    <div class="cloud-spinner" id="cloud-spinner"></div>
+    <div class="cloud-msg" id="cloud-msg">設問を読み込み中…</div>
+    <button class="cloud-retry" id="cloud-retry" style="display:none" onclick="retryCloudLoad()">再試行</button>
+  </div>
+  <div id="setup-screen" class="hidden">
+    <div class="setup-inner">
+      <div class="setup-icon">⚙️</div>
+      <div class="setup-title">GAS URL の設定</div>
+      <p class="setup-desc">Google Apps Script の URL を入力してください。<br>一度設定すると次回から自動で読み込まれます。</p>
+      <input type="url" id="gas-url-input" class="setup-input"
+        placeholder="https://script.google.com/macros/s/..." autocomplete="off" spellcheck="false">
+      <div class="setup-err" id="setup-err"></div>
+      <button class="setup-btn" onclick="saveGasUrl()">保存して開始</button>
+    </div>
+  </div>
+  <!-- ボトムタブバー -->
+  <div id="tab-bar">
+    <button class="tab-btn active" id="tab-answer" onclick="switchTab('answer')">
+      <span class="tab-icon">✓</span>
+      <span class="tab-label">回答</span>
+    </button>
+    <button class="tab-btn" id="tab-edit" onclick="switchTab('edit')">
+      <span class="tab-icon">✎</span>
+      <span class="tab-label">設問</span>
+    </button>
+  </div>
+  <!-- 編集モードパネル -->
+  <div id="edit-panel" class="hidden">
+    <div id="edit-loading" class="edit-loading hidden">
+      <div class="cloud-spinner"></div>
+      <span>読み込み中...</span>
+    </div>
+    <div id="edit-content">
+      <div id="eq-list"></div>
+      <button class="add-btn" id="eq-add-btn">＋ 設問を追加</button>
+      <div id="eq-add-form" class="eq-form hidden">
+        <div class="eq-form-title" style="font-size:14px;font-weight:700;margin-bottom:14px;">＋ 設問を追加</div>
+        <div class="form-row">
+          <label class="form-label">タイプ</label>
+          <div class="type-tabs" id="eq-type-tabs">
+            <button class="type-tab sel" data-t="swipe">swipe</button>
+            <button class="type-tab" data-t="dial">dial</button>
+            <button class="type-tab" data-t="tap">tap</button>
+            <button class="type-tab" data-t="multi">multi</button>
+            <button class="type-tab" data-t="burst">burst</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label class="form-label">ラベル</label>
+          <input class="form-input" id="eq-label" type="text" placeholder="例：今日は調子がいい">
+        </div>
+        <div id="eq-type-params"></div>
+        <div class="form-actions">
+          <button class="btn-cancel" onclick="closeEditForm()">キャンセル</button>
+          <button class="btn-confirm" id="eq-confirm-btn" onclick="confirmEditForm()">追加する</button>
+        </div>
+      </div>
+    </div>
+    <div id="edit-footer">
+      <button id="eq-save-btn" class="eq-save-btn" onclick="saveQuestions()">GASに保存する</button>
+    </div>
+  </div>
 </div>
 <script>
-/* ═══════════════════════════════════════
-   ▼ 設定（ここだけ編集）▼
-═══════════════════════════════════════ */
-const GAS_URL = 'https://script.google.com/macros/s/AKfycby_DEdj2CsH34wcpkzeVQ9MLw8m5ti29Udo_J-s02IwXoVujLKqq2gmvPlGC24P4-Xjdw/exec';
+const GAS_URL_KEY = 'daily_checkin.gas_url';
+let GAS_URL = '';
+try { GAS_URL = localStorage.getItem(GAS_URL_KEY) || ''; } catch(e) {}
+let QUESTIONS = [];
 
-const QUESTIONS = [
-  { type: 'swipe', label: '今日は調子がいい' },
-  { type: 'dial',  label: '体重', min: 40, max: 120, step: 0.1, unit: 'kg' },
-  { type: 'tap',   label: '睡眠評価', min: 1, max: 5 },
-  // { type: 'multi', label: '今日意識できた食事', options: ['カロリー', 'タンパク質', '肌ケア', '消化に良いもの', '健康食材'] },
-];
-/* ═══════════════════════════════════════
-   ▲ 設定ここまで ▲
-═══════════════════════════════════════ */
-
-// ── 定数 ──
 const ITEM_H = 56, DRUM_H = 280, DRUM_CY = 140, PAD = 2;
-
-// ── 状態 ──
 let answers = {}, curIdx = 0;
-
-// ── グローバルドラッグハンドラ（各コンポーネントが使い回す）──
 let onDragX = null, onDragY = null, onDragDone = null;
 window.addEventListener('mousemove', e => { onDragX?.(e.clientX); onDragY?.(e.clientY); });
 window.addEventListener('mouseup', () => onDragDone?.());
@@ -158,47 +231,39 @@ window.addEventListener('touchmove', e => {
 }, { passive: false });
 window.addEventListener('touchend', () => onDragDone?.());
 
-// ── ユーティリティ ──
 const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
 const clamp    = (v, a, b) => Math.max(a, Math.min(b, v));
 const dialDec  = step => step < 1 ? (String(step).split('.')[1] || '').length : 0;
 const idxToOff = vi => DRUM_CY - (vi + PAD + 0.5) * ITEM_H;
 const offToIdx = (off, count) => clamp(Math.round((DRUM_CY - ITEM_H * 0.5 - off) / ITEM_H - PAD), 0, count - 1);
 
-// ── ランタイム ──
-function setProgress(n) {
-  document.getElementById('pfill').style.width = (Math.min(n, QUESTIONS.length) / QUESTIONS.length * 100) + '%';
-}
+function setProgress(n) { document.getElementById('pfill').style.width = (Math.min(n, QUESTIONS.length) / QUESTIONS.length * 100) + '%'; }
 function goTo(n) {
   const all = document.querySelectorAll('.screen');
   const cur = document.querySelector('.screen.active');
   if (cur) { cur.classList.remove('active'); cur.classList.add('leaving'); setTimeout(() => cur.classList.remove('leaving'), 450); }
-  onDragX = onDragY = onDragDone = null;
-  curIdx = n;
-  all[n]?.classList.add('active');
-  setProgress(n);
+  onDragX = onDragY = onDragDone = null; curIdx = n;
+  all[n]?.classList.add('active'); setProgress(n);
 }
 function next() { curIdx + 1 < QUESTIONS.length ? goTo(curIdx + 1) : sendAndDone(); }
-
 async function sendAndDone() {
-  const payload = { timestamp: new Date().toLocaleString('ja-JP'), answers };
+  const payload = { type: 'answer', timestamp: new Date().toLocaleString('ja-JP'), answers };
   populateDone();
   goTo(QUESTIONS.length);
-  try {
-    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) });
-  } catch(e) { console.warn('POST failed:', e); }
+  const subEl = document.querySelector('#screens .screen:last-child .done-sub');
+  if (subEl) subEl.textContent = '送信中...';
+  // no-cors responses are opaque; errors are undetectable — show success optimistically after dispatch
+  fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
+    .catch(e => console.warn('POST failed:', e));
+  setTimeout(() => { if (subEl && subEl.textContent === '送信中...') subEl.textContent = '今日も記録できました。\nお疲れ様でした！'; }, 1500);
 }
 function populateDone() {
-  const box = document.getElementById('done-answers');
-  if (!box) return;
-  box.innerHTML = '';
+  const box = document.getElementById('done-answers'); if (!box) return; box.innerHTML = '';
   QUESTIONS.forEach(q => {
-    const row = el('div', 'done-row');
-    row.appendChild(el('span', 'done-key', q.label));
+    const row = el('div', 'done-row'); row.appendChild(el('span', 'done-key', q.label));
     const v = answers[q.label];
     const disp = v == null ? '—' : (Array.isArray(v) ? (v.length ? v.join(', ') : '—') : v) + (q.unit ? ' ' + q.unit : '');
-    row.appendChild(el('span', 'done-val', disp));
-    box.appendChild(row);
+    row.appendChild(el('span', 'done-val', disp)); box.appendChild(row);
   });
 }
 function resetAll() { answers = {}; buildAll(); setTimeout(() => goTo(0), 30); }
@@ -208,218 +273,366 @@ function makeScreen(q, qi) {
   s.appendChild(el('div', 'q-text', q.label));
   return s;
 }
-
-// ══════════════════════════════════════
-// コンポーネント
-// 新しいタイプを追加 → 関数を書いて BUILDERS に登録するだけ
-// ══════════════════════════════════════
-
-// ── swipe ──
 function buildSwipe(q, qi) {
   const s = makeScreen(q, qi);
   const zone = el('div', 'swipe-zone');
   const badgeY = el('div', 'swipe-badge badge-yes', 'はい ✓');
-  const badgeN = el('div', 'swipe-badge badge-no',  '✗ いいえ');
-  const card  = el('div', 'swipe-card');
-  const emoji = el('div', 'swipe-emoji', '🤔');
-  card.appendChild(emoji);
-  zone.append(badgeN, badgeY, card);
-  s.appendChild(zone);
-  s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →'));
-
-  const THRESH = 82;
-  let sx = 0, ox = 0, active = false;
-  const onStart = x => {
-    if (active) return;
-    active = true; sx = x; ox = 0;
-    card.style.transition = 'none';
-    onDragX = onMove; onDragDone = onEnd;
-  };
-  const onMove = x => {
-    if (!active) return;
-    ox = x - sx;
-    card.style.transform = 'translateX(' + ox + 'px) rotate(' + (ox * 0.07) + 'deg)';
-    const r = clamp(Math.abs(ox) / THRESH, 0, 1);
-    badgeY.style.opacity = ox > 0 ? r : 0.1;
-    badgeN.style.opacity = ox < 0 ? r : 0.1;
-    emoji.textContent = ox > THRESH * 0.5 ? '😄' : ox < -THRESH * 0.5 ? '😔' : '🤔';
-  };
-  const onEnd = () => {
-    if (!active) return;
-    active = false; onDragX = onDragDone = null;
-    card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
-    if (ox > THRESH) {
-      answers[q.label] = 'はい';
-      card.style.transform = 'translateX(600px) rotate(28deg)';
-      setTimeout(next, 370);
-    } else if (ox < -THRESH) {
-      answers[q.label] = 'いいえ';
-      card.style.transform = 'translateX(-600px) rotate(-28deg)';
-      setTimeout(next, 370);
-    } else {
-      card.style.transform = '';
-      badgeY.style.opacity = badgeN.style.opacity = 0;
-      emoji.textContent = '🤔';
-    }
-  };
-  card.addEventListener('mousedown',  e => { e.preventDefault(); onStart(e.clientX); });
+  const badgeN = el('div', 'swipe-badge badge-no', '✗ いいえ');
+  const card = el('div', 'swipe-card'); const emoji = el('div', 'swipe-emoji', '🤔');
+  card.appendChild(emoji); zone.append(badgeN, badgeY, card);
+  s.appendChild(zone); s.appendChild(el('div', 'swipe-guide', '← いいえ　　はい →'));
+  const THRESH = 82; let sx = 0, ox = 0, active = false;
+  const onStart = x => { if (active) return; active = true; sx = x; ox = 0; card.style.transition = 'none'; onDragX = onMove; onDragDone = onEnd; };
+  const onMove = x => { if (!active) return; ox = x - sx; card.style.transform = 'translateX(' + ox + 'px) rotate(' + (ox * 0.07) + 'deg)'; const r = clamp(Math.abs(ox) / THRESH, 0, 1); badgeY.style.opacity = ox > 0 ? r : 0.1; badgeN.style.opacity = ox < 0 ? r : 0.1; emoji.textContent = ox > THRESH * 0.5 ? '😄' : ox < -THRESH * 0.5 ? '😔' : '🤔'; };
+  const onEnd = () => { if (!active) return; active = false; onDragX = onDragDone = null; card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)'; if (ox > THRESH) { answers[q.label] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; setTimeout(next, 370); } else if (ox < -THRESH) { answers[q.label] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; setTimeout(next, 370); } else { card.style.transform = ''; badgeY.style.opacity = badgeN.style.opacity = 0; emoji.textContent = '🤔'; } };
+  card.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
   card.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX); }, { passive: false });
   return s;
 }
-
-// ── dial ──
 function buildDial(q, qi) {
   const isLast = qi === QUESTIONS.length - 1;
-  const dec = dialDec(q.step);
-  const count = Math.round((q.max - q.min) / q.step) + 1;
-  const getVal = i => parseFloat((q.min + i * q.step).toFixed(dec + 4));
-  const fmt    = v => Number(v).toFixed(dec);
-
   const s = makeScreen(q, qi);
-  const col = el('div', 'drum-col'), wrap = el('div', 'drum-wrap');
-  const hl = el('div', 'drum-hl'), fTop = el('div', 'drum-fade top'), fBot = el('div', 'drum-fade bot');
-  const track = el('div', 'drum-track');
-
-  let selVI = q.default !== undefined
-    ? clamp(Math.round((q.default - q.min) / q.step), 0, count - 1)
-    : Math.floor(count / 2);
-  answers[q.label] = getVal(selVI);
-
-  const domItems = [];
-  for (let p = 0; p < PAD; p++) { const d = el('div', 'drum-item'); track.appendChild(d); domItems.push({ el: d, vi: -1 }); }
-  for (let i = 0; i < count; i++) {
-    const d = el('div', i === selVI ? 'drum-item sel' : 'drum-item');
-    d.textContent = fmt(getVal(i)); track.appendChild(d); domItems.push({ el: d, vi: i });
-  }
-  for (let p = 0; p < PAD; p++) { const d = el('div', 'drum-item'); track.appendChild(d); domItems.push({ el: d, vi: -1 }); }
-
-  wrap.append(track, hl, fTop, fBot);
-  col.appendChild(wrap);
-  if (q.unit) col.appendChild(el('div', 'drum-unit', q.unit));
-  s.appendChild(col);
-
-  let offY = idxToOff(selVI);
-  const minOff = idxToOff(count - 1), maxOff = idxToOff(0);
-  track.style.transform = 'translateY(' + offY + 'px)';
-
-  const setSelected = vi => {
-    selVI = clamp(vi, 0, count - 1);
-    answers[q.label] = getVal(selVI);
-    domItems.forEach(it => { if (it.vi >= 0) it.el.classList.toggle('sel', it.vi === selVI); });
-  };
-  let startY = 0, startOff = 0, isDrag = false, velY = 0, prevY = 0, prevT = 0;
-  const onStart = y => {
-    isDrag = true; startY = y; startOff = offY; velY = 0; prevY = y; prevT = Date.now();
-    track.style.transition = 'none'; onDragY = onMove; onDragDone = onEnd;
-  };
-  const onMove = y => {
-    if (!isDrag) return;
-    const now = Date.now();
-    velY = (y - prevY) / Math.max(1, now - prevT) * 16; prevY = y; prevT = now;
-    offY = clamp(startOff + (y - startY), minOff, maxOff);
+  function createDrum(cfg, compact, onChange) {
+    const step = cfg.step || 1; const dec = dialDec(step);
+    const count = Math.round((cfg.max - cfg.min) / step) + 1;
+    const getVal = i => parseFloat((cfg.min + i * step).toFixed(dec + 4));
+    const fmt = v => Number(v).toFixed(dec);
+    const col = el('div', 'drum-col'); const wrap = el('div', compact ? 'drum-wrap compact' : 'drum-wrap');
+    const hl = el('div', 'drum-hl'); const fTop = el('div', 'drum-fade top'); const fBot = el('div', 'drum-fade bot'); const track = el('div', 'drum-track');
+    let selVI = cfg.default !== undefined ? clamp(Math.round((cfg.default - cfg.min) / step), 0, count - 1) : Math.floor(count / 2);
+    const domItems = [];
+    for (let p = 0; p < PAD; p++) { const d = el('div', 'drum-item'); track.appendChild(d); domItems.push({ el: d, vi: -1 }); }
+    for (let i = 0; i < count; i++) { const d = el('div', i === selVI ? 'drum-item sel' : 'drum-item'); d.textContent = fmt(getVal(i)); track.appendChild(d); domItems.push({ el: d, vi: i }); }
+    for (let p = 0; p < PAD; p++) { const d = el('div', 'drum-item'); track.appendChild(d); domItems.push({ el: d, vi: -1 }); }
+    wrap.append(track, hl, fTop, fBot); col.appendChild(wrap);
+    if (cfg.unit) col.appendChild(el('div', 'drum-unit', cfg.unit));
+    let offY = idxToOff(selVI); const minOff = idxToOff(count - 1), maxOff = idxToOff(0);
     track.style.transform = 'translateY(' + offY + 'px)';
-    setSelected(offToIdx(offY, count));
-  };
-  const onEnd = () => {
-    if (!isDrag) return;
-    isDrag = false; onDragY = onDragDone = null;
-    const snapVI = offToIdx(clamp(offY + velY * 5, minOff, maxOff), count);
-    const snapOff = idxToOff(snapVI);
-    offY = snapOff;
-    track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
-    track.style.transform = 'translateY(' + snapOff + 'px)';
-    setSelected(snapVI);
-  };
-  wrap.addEventListener('mousedown',  e => { e.preventDefault(); onStart(e.clientY); });
-  wrap.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientY); }, { passive: false });
-
-  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ');
-  btn.onclick = isLast ? sendAndDone : next;
-  s.appendChild(btn);
-  return s;
-}
-
-// ── tap ──
-function buildTap(q, qi) {
-  const isLast = qi === QUESTIONS.length - 1;
-  const s = makeScreen(q, qi);
-  answers[q.label] = null;
-
-  const row = el('div', 'tap-row');
-  const btns = [];
-  for (let i = q.min; i <= q.max; i++) {
-    const b = el('button', 'tap-btn', String(i));
-    const val = i;
-    b.onclick = () => { btns.forEach(x => x.classList.remove('sel')); b.classList.add('sel'); answers[q.label] = val; };
-    row.appendChild(b); btns.push(b);
+    const setSelected = vi => { selVI = clamp(vi, 0, count - 1); domItems.forEach(it => { if (it.vi >= 0) it.el.classList.toggle('sel', it.vi === selVI); }); onChange(); };
+    let startY = 0, startOff = 0, isDrag = false, velY = 0, prevY = 0, prevT = 0;
+    const onStart = y => { isDrag = true; startY = y; startOff = offY; velY = 0; prevY = y; prevT = Date.now(); track.style.transition = 'none'; onDragY = onMove; onDragDone = onEnd; };
+    const onMove = y => { if (!isDrag) return; const now = Date.now(); velY = (y - prevY) / Math.max(1, now - prevT) * 16; prevY = y; prevT = now; offY = clamp(startOff + (y - startY), minOff, maxOff); track.style.transform = 'translateY(' + offY + 'px)'; setSelected(offToIdx(offY, count)); };
+    const onEnd = () => { if (!isDrag) return; isDrag = false; onDragY = onDragDone = null; const snapVI = offToIdx(clamp(offY + velY * 5, minOff, maxOff), count); offY = idxToOff(snapVI); track.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)'; track.style.transform = 'translateY(' + offY + 'px)'; setSelected(snapVI); };
+    wrap.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientY); });
+    wrap.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientY); }, { passive: false });
+    return { col, numVal: () => getVal(selVI), fmtVal: () => fmt(getVal(selVI)) };
   }
-  s.appendChild(row);
-
-  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ');
-  btn.onclick = () => {
-    if (answers[q.label] == null) { row.classList.remove('shake'); void row.offsetWidth; row.classList.add('shake'); return; }
-    if (isLast) sendAndDone(); else next();
-  };
-  s.appendChild(btn);
-  return s;
+  if (q.dial2) {
+    const cfg2 = { step: 1, ...q.dial2 }; const sep = q.separator !== undefined ? q.separator : '.';
+    let d1, d2; const updateAnswer = () => { answers[q.label] = d1.fmtVal() + (q.unit || '') + sep + d2.fmtVal() + (cfg2.unit || ''); };
+    d1 = createDrum(q, true, updateAnswer); d2 = createDrum(cfg2, true, updateAnswer); updateAnswer();
+    const row = el('div', 'dial-row'); row.appendChild(d1.col); if (sep) row.appendChild(el('div', 'dial-sep', sep)); row.appendChild(d2.col); s.appendChild(row);
+  } else {
+    let d; const updateAnswer = () => { answers[q.label] = d.numVal(); }; d = createDrum(q, false, updateAnswer); updateAnswer(); s.appendChild(d.col);
+  }
+  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ'); btn.onclick = isLast ? sendAndDone : next; s.appendChild(btn); return s;
 }
-
-// ── multi（複数選択）──
+function buildTap(q, qi) {
+  const isLast = qi === QUESTIONS.length - 1; const s = makeScreen(q, qi); answers[q.label] = null;
+  const n = (q.max || 5) - (q.min || 1) + 1;
+  const cont = el('div', 'scrub-container'); const ind = el('div', 'scrub-indicator'); const row = el('div', 'scrub-items');
+  cont.appendChild(ind); cont.appendChild(row); const items = [];
+  for (let i = 0; i < n; i++) { const it = el('div', 'scrub-item', String((q.min || 1) + i)); row.appendChild(it); items.push(it); }
+  const setVal = i => { if (i < 0 || i >= n) return; answers[q.label] = (q.min || 1) + i; items.forEach((it, j) => it.classList.toggle('sel', j === i)); const w = cont.offsetWidth / n; ind.style.left = (i * w + 4) + 'px'; ind.style.width = (w - 8) + 'px'; ind.style.opacity = '1'; };
+  const hitIdx = x => { const rect = cont.getBoundingClientRect(); return clamp(Math.floor((x - rect.left) / (rect.width / n)), 0, n - 1); };
+  const onStart = x => { setVal(hitIdx(x)); onDragX = cx => setVal(hitIdx(cx)); onDragDone = () => { onDragX = onDragDone = null; }; };
+  cont.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
+  cont.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX); }, { passive: false });
+  s.appendChild(cont);
+  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ'); btn.onclick = () => { if (answers[q.label] == null) { cont.classList.remove('shake'); void cont.offsetWidth; cont.classList.add('shake'); return; } if (isLast) sendAndDone(); else next(); }; s.appendChild(btn); return s;
+}
 function buildMulti(q, qi) {
-  const isLast = qi === QUESTIONS.length - 1;
-  const s = makeScreen(q, qi);
-  answers[q.label] = [];
-
+  const isLast = qi === QUESTIONS.length - 1; const s = makeScreen(q, qi); answers[q.label] = [];
   const grid = el('div', 'multi-grid');
-  q.options.forEach(opt => {
-    const chip = el('button', 'multi-chip', opt);
-    chip.onclick = () => {
-      chip.classList.toggle('sel');
-      const arr = answers[q.label];
-      const idx = arr.indexOf(opt);
-      if (idx >= 0) arr.splice(idx, 1); else arr.push(opt);
-    };
-    grid.appendChild(chip);
-  });
-  s.appendChild(grid);
-  s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
-
-  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ');
-  btn.onclick = isLast ? sendAndDone : next;
-  s.appendChild(btn);
+  q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { chip.classList.toggle('sel'); const arr = answers[q.label]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
+  s.appendChild(grid); s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
+  const btn = el('button', 'act-btn', isLast ? '送信' : '次へ'); btn.onclick = isLast ? sendAndDone : next; s.appendChild(btn); return s;
+}
+function buildBurst(q, qi) {
+  const isLast = qi === QUESTIONS.length - 1; const s = makeScreen(q, qi);
+  const maxTaps = q.max || 10; let count = 0, timer = null; answers[q.label] = 0;
+  const area = el('div', 'burst-area'); const disp = el('div', 'burst-count-disp', '0'); const lbl = el('div', 'burst-max-lbl', '/ ' + maxTaps);
+  const wrap = el('div', 'burst-ring-wrap'); const R = 54, C = 2 * Math.PI * R;
+  wrap.innerHTML = '<svg class="burst-ring-svg" viewBox="0 0 120 120"><circle class="burst-ring-bg" cx="60" cy="60" r="' + R + '"/><circle class="burst-ring-fg" id="burst-fg" cx="60" cy="60" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/></svg>';
+  const btn = el('button', 'burst-btn', '👆'); const hint = el('div', 'burst-hint', '2秒で自動送信');
+  wrap.appendChild(btn); area.append(disp, lbl, wrap, hint); s.appendChild(area);
+  const fg = () => wrap.querySelector('#burst-fg');
+  const doTap = () => {
+    if (count >= maxTaps) return; count++; answers[q.label] = count; disp.textContent = count;
+    fg().style.strokeDashoffset = C * (1 - Math.min(count / maxTaps, 1));
+    btn.classList.remove('burst-pop'); void btn.offsetWidth; btn.classList.add('burst-pop');
+    const p = el('div', 'burst-particle', ['✨','⭐','💥','🎉'][count % 4]);
+    const angle = Math.random() * 2 * Math.PI; const dist = 60 + Math.random() * 40;
+    p.style.setProperty('--dx', Math.cos(angle) * dist + 'px'); p.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+    wrap.appendChild(p); setTimeout(() => p.remove(), 700);
+    if (count >= maxTaps) { hint.textContent = '最大！'; clearTimeout(timer); setTimeout(next, 600); return; }
+    clearTimeout(timer); timer = setTimeout(() => { hint.textContent = '送信！'; setTimeout(next, 500); }, 2000);
+  };
+  btn.addEventListener('click', doTap);
+  btn.addEventListener('touchstart', e => { e.preventDefault(); doTap(); }, { passive: false });
   return s;
 }
+const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst };
+function buildAll() {
+  const cont = document.getElementById('screens'); cont.innerHTML = '';
+  QUESTIONS.forEach((q, i) => { const builder = BUILDERS[q.type]; if (!builder) { console.warn('[checkin] Unknown type:', q.type); return; } cont.appendChild(builder(q, i)); });
+  const done = el('div', 'screen');
+  done.innerHTML = '<div class="done-wrap"><div class="done-icon">🎉</div><div class="done-title">送信完了！</div><div class="done-sub"></div><div class="done-answers" id="done-answers"></div><button class="reset-btn">もう一度記録する</button></div>';
+  done.querySelector('.reset-btn').onclick = resetAll; cont.appendChild(done); setProgress(0);
+}
+function showSetupScreen(preload) {
+  const input = document.getElementById('gas-url-input');
+  if (preload && GAS_URL) input.value = GAS_URL;
+  document.getElementById('setup-err').textContent = '';
+  document.getElementById('setup-screen').classList.remove('hidden');
+}
+function hideSetupScreen() { document.getElementById('setup-screen').classList.add('hidden'); }
+function saveGasUrl() {
+  const input = document.getElementById('gas-url-input').value.trim();
+  const err = document.getElementById('setup-err');
+  if (!input.startsWith('https://')) { err.textContent = '正しい URL を入力してください'; return; }
+  err.textContent = ''; GAS_URL = input;
+  try { localStorage.setItem(GAS_URL_KEY, GAS_URL); } catch(e) {}
+  hideSetupScreen(); if (QUESTIONS.length === 0) initCloud();
+}
+const QC_KEY = 'daily_checkin.questions_cache';
+let _pendingQuestions = null;
+function showCloudOverlay(mode) {
+  const ov = document.getElementById('cloud-overlay'); const sp = document.getElementById('cloud-spinner');
+  const msg = document.getElementById('cloud-msg'); const btn = document.getElementById('cloud-retry');
+  ov.classList.remove('hidden');
+  if (mode === 'error') { sp.style.display = 'none'; msg.textContent = '⚠️ 設問を読み込めませんでした'; btn.style.display = ''; }
+  else { sp.style.display = ''; msg.textContent = '設問を読み込み中…'; btn.style.display = 'none'; }
+}
+function hideCloudOverlay() { document.getElementById('cloud-overlay').classList.add('hidden'); }
+function showUpdateBanner() { document.getElementById('update-banner').classList.add('show'); }
+function hideUpdateBanner() { document.getElementById('update-banner').classList.remove('show'); }
+function applyCloudUpdate() {
+  if (!_pendingQuestions || _pendingQuestions.length === 0) return;
+  QUESTIONS.length = 0; _pendingQuestions.forEach(q => QUESTIONS.push(q)); _pendingQuestions = null;
+  hideUpdateBanner(); buildAll(); setTimeout(() => goTo(0), 40);
+}
+async function fetchAndCache() {
+  const sep = GAS_URL.includes('?') ? '&' : '?';
+  const res = await fetch(GAS_URL + sep + 'action=config'); const data = await res.json();
+  if (data.status !== 'ok') throw new Error(data.message || 'fetch error');
+  const cfg = data.config || {}; const qs = Array.isArray(cfg.questions) ? cfg.questions : []; const version = cfg.version ?? null;
+  if (qs.length > 0) { try { localStorage.setItem(QC_KEY, JSON.stringify({ questions: qs, version, updatedAt: cfg.updatedAt })); } catch(e) {} }
+  return { questions: qs, version };
+}
+async function initCloud() {
+  let cached = null;
+  try { const raw = localStorage.getItem(QC_KEY); if (raw) cached = JSON.parse(raw); } catch(e) {}
+  if (cached && Array.isArray(cached.questions) && cached.questions.length > 0) {
+    cached.questions.forEach(q => QUESTIONS.push(q)); buildAll(); setTimeout(() => goTo(0), 40); hideCloudOverlay();
+    fetchAndCache().then(({ questions, version }) => { if (version != null && version !== cached.version && questions.length > 0) { _pendingQuestions = questions; showUpdateBanner(); } }).catch(() => {});
+  } else {
+    showCloudOverlay('loading');
+    try { const { questions } = await fetchAndCache(); if (questions.length === 0) { showCloudOverlay('error'); return; } questions.forEach(q => QUESTIONS.push(q)); buildAll(); setTimeout(() => goTo(0), 40); hideCloudOverlay(); }
+    catch(e) { showCloudOverlay('error'); }
+  }
+}
+function retryCloudLoad() {
+  showCloudOverlay('loading'); QUESTIONS.length = 0;
+  fetchAndCache().then(({ questions }) => { if (questions.length === 0) { showCloudOverlay('error'); return; } questions.forEach(q => QUESTIONS.push(q)); buildAll(); setTimeout(() => goTo(0), 40); hideCloudOverlay(); }).catch(() => showCloudOverlay('error'));
+}
 
-// ══════════════════════════════════════
-// コンポーネントレジストリ
-// 新しいタイプを追加するときはここに登録する
-// ══════════════════════════════════════
-const BUILDERS = {
-  swipe: buildSwipe,
-  dial:  buildDial,
-  tap:   buildTap,
-  multi: buildMulti,
+// ─── 編集モード ───
+let editQuestions = [];
+let editSelectedType = 'swipe';
+let editingIdx = null;
+let _saveTabTimer = null;
+
+function switchTab(tab) {
+  const answerActive = tab === 'answer';
+  if (!answerActive) clearTimeout(_saveTabTimer);  // 保存後の自動タブ切替をキャンセル
+  document.getElementById('tab-answer').classList.toggle('active', answerActive);
+  document.getElementById('tab-edit').classList.toggle('active', !answerActive);
+  document.getElementById('edit-panel').classList.toggle('hidden', answerActive);
+  if (!answerActive) loadEditQuestions();
+}
+
+async function loadEditQuestions() {
+  if (!GAS_URL) { editQuestions = []; renderEditList(); return; }
+  const loadingEl = document.getElementById('edit-loading');
+  const contentEl = document.getElementById('edit-content');
+  loadingEl.classList.remove('hidden');
+  contentEl.style.visibility = 'hidden';
+  try {
+    const sep = GAS_URL.includes('?') ? '&' : '?';
+    const res = await fetch(GAS_URL + sep + 'action=config');
+    const data = await res.json();
+    const qs = (data.config && Array.isArray(data.config.questions)) ? data.config.questions : [];
+    editQuestions = JSON.parse(JSON.stringify(qs));
+  } catch(e) {
+    editQuestions = [];
+  }
+  loadingEl.classList.add('hidden');
+  contentEl.style.visibility = '';
+  renderEditList();
+}
+
+function renderEditList() {
+  const list = document.getElementById('eq-list');
+  if (editQuestions.length === 0) {
+    list.innerHTML = '<div class="eq-empty">設問がありません。追加してください。</div>';
+    return;
+  }
+  list.innerHTML = '';
+  editQuestions.forEach((q, i) => {
+    const card = el('div', 'eq-card');
+    const badge = el('div', 'eq-badge badge-' + q.type); badge.textContent = q.type;
+    const label = el('div', 'eq-label'); label.textContent = q.label;
+    const meta = el('div', 'eq-meta');
+    if (q.type === 'dial') meta.textContent = q.min + '〜' + q.max + (q.unit ? ' ' + q.unit : '');
+    if (q.type === 'tap') meta.textContent = q.min + '〜' + q.max;
+    if (q.type === 'multi') meta.textContent = q.options.length + '択';
+    if (q.type === 'burst') meta.textContent = '最大 ' + (q.max || 10) + '回';
+    const controls = el('div', 'eq-controls');
+    const upBtn = el('button', 'icon-btn'); upBtn.textContent = '↑'; upBtn.disabled = i === 0;
+    upBtn.onclick = () => { editQuestions.splice(i - 1, 0, editQuestions.splice(i, 1)[0]); renderEditList(); };
+    const dnBtn = el('button', 'icon-btn'); dnBtn.textContent = '↓'; dnBtn.disabled = i === editQuestions.length - 1;
+    dnBtn.onclick = () => { editQuestions.splice(i + 1, 0, editQuestions.splice(i, 1)[0]); renderEditList(); };
+    const editBtn = el('button', 'icon-btn'); editBtn.textContent = '✏'; editBtn.style.color = '#f59e0b';
+    editBtn.onclick = () => openEditForm(i);
+    const delBtn = el('button', 'icon-btn del'); delBtn.textContent = '✕';
+    delBtn.onclick = () => { if (confirm('"' + q.label + '" を削除しますか？')) { editQuestions.splice(i, 1); renderEditList(); } };
+    controls.append(upBtn, dnBtn, editBtn, delBtn);
+    card.append(badge, label, meta, controls);
+    list.appendChild(card);
+  });
+}
+
+const EQ_TYPE_PARAMS = {
+  swipe: () => '',
+  dial: () => `<div class="form-row-grid"><div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="40"></div><div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="120"></div></div><div class="form-row-grid"><div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="ep-step" type="number" value="1" step="any"></div><div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit" type="text" placeholder="kg…"></div></div>`,
+  tap: () => `<div class="form-row-grid"><div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="1"></div><div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="5"></div></div>`,
+  multi: () => `<div class="form-row"><label class="form-label">選択肢（カンマ区切り）</label><input class="form-input" id="ep-options" type="text" placeholder="カロリー, タンパク質, 野菜"></div>`,
+  burst: () => `<div class="form-row"><label class="form-label">最大連打数</label><input class="form-input" id="ep-max" type="number" value="10" min="1"></div>`,
 };
 
-// ── 画面構築 ──
-function buildAll() {
-  const cont = document.getElementById('screens');
-  cont.innerHTML = '';
-  QUESTIONS.forEach((q, i) => {
-    const builder = BUILDERS[q.type];
-    if (!builder) { console.warn('[checkin] Unknown type:', q.type); return; }
-    cont.appendChild(builder(q, i));
-  });
-  const done = el('div', 'screen');
-  done.innerHTML = '<div class="done-wrap"><div class="done-icon">🎉</div><div class="done-title">送信完了！</div><div class="done-sub">今日も記録できました。<br>お疲れ様でした！</div><div class="done-answers" id="done-answers"></div><button class="reset-btn">もう一度記録する</button></div>';
-  done.querySelector('.reset-btn').onclick = resetAll;
-  cont.appendChild(done);
-  setProgress(0);
+function openEditForm(idx) {
+  editingIdx = idx;
+  const form = document.getElementById('eq-add-form');
+  form.classList.remove('hidden');
+  const isEdit = idx !== null;
+  const titleEl = form.querySelector('.eq-form-title');
+  if (titleEl) titleEl.textContent = isEdit ? '✏ 設問を編集' : '＋ 設問を追加';
+  document.getElementById('eq-confirm-btn').textContent = isEdit ? '保存する' : '追加する';
+  if (isEdit) {
+    const q = editQuestions[idx];
+    editSelectedType = q.type;
+    form.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === q.type));
+    renderEditTypeParams();
+    document.getElementById('eq-label').value = q.label;
+    if (q.type === 'dial') {
+      const pMin = document.getElementById('ep-min'); if (pMin) pMin.value = q.min;
+      const pMax = document.getElementById('ep-max'); if (pMax) pMax.value = q.max;
+      const pStep = document.getElementById('ep-step'); if (pStep) pStep.value = q.step || 1;
+      const pUnit = document.getElementById('ep-unit'); if (pUnit) pUnit.value = q.unit || '';
+    } else if (q.type === 'tap') {
+      const pMin = document.getElementById('ep-min'); if (pMin) pMin.value = q.min || 1;
+      const pMax = document.getElementById('ep-max'); if (pMax) pMax.value = q.max || 5;
+    } else if (q.type === 'multi') {
+      const pOpts = document.getElementById('ep-options'); if (pOpts) pOpts.value = q.options.join(', ');
+    } else if (q.type === 'burst') {
+      const pMax = document.getElementById('ep-max'); if (pMax) pMax.value = q.max || 10;
+    }
+  } else {
+    editSelectedType = 'swipe';
+    form.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('sel', t.dataset.t === 'swipe'));
+    renderEditTypeParams();
+    document.getElementById('eq-label').value = '';
+  }
+  document.getElementById('eq-label').focus();
 }
 
-// ── 初期化 ──
-buildAll();
-setTimeout(() => goTo(0), 40);
+function closeEditForm() {
+  editingIdx = null;
+  document.getElementById('eq-add-form').classList.add('hidden');
+}
+
+function renderEditTypeParams() {
+  const cont = document.getElementById('eq-type-params');
+  if (cont) cont.innerHTML = EQ_TYPE_PARAMS[editSelectedType]?.() || '';
+}
+
+function confirmEditForm() {
+  const label = document.getElementById('eq-label').value.trim();
+  if (!label) { alert('ラベルを入力してください'); return; }
+  let q = { type: editSelectedType, label };
+  if (editSelectedType === 'dial') {
+    const min = parseFloat(document.getElementById('ep-min').value);
+    const max = parseFloat(document.getElementById('ep-max').value);
+    const step = parseFloat(document.getElementById('ep-step').value) || 1;
+    const unit = document.getElementById('ep-unit').value.trim();
+    if (isNaN(min) || isNaN(max) || min >= max) { alert('最小値・最大値を正しく入力してください'); return; }
+    q = { ...q, min, max, step }; if (unit) q.unit = unit;
+  } else if (editSelectedType === 'tap') {
+    const min = parseInt(document.getElementById('ep-min').value);
+    const max = parseInt(document.getElementById('ep-max').value);
+    if (isNaN(min) || isNaN(max) || min >= max) { alert('最小値・最大値を正しく入力してください'); return; }
+    q = { ...q, min, max };
+  } else if (editSelectedType === 'multi') {
+    const options = document.getElementById('ep-options').value.split(',').map(s => s.trim()).filter(Boolean);
+    if (options.length < 2) { alert('選択肢を2つ以上入力してください'); return; }
+    q = { ...q, options };
+  } else if (editSelectedType === 'burst') {
+    q = { ...q, max: parseInt(document.getElementById('ep-max').value) || 10 };
+  }
+  if (editingIdx !== null) { editQuestions[editingIdx] = q; } else { editQuestions.push(q); }
+  renderEditList();
+  closeEditForm();
+}
+
+async function saveQuestions() {
+  if (!GAS_URL) { alert('GAS URL が設定されていません'); return; }
+  const btn = document.getElementById('eq-save-btn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try {
+    const payload = { type: 'config', config: { questions: editQuestions } };
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(data.message || 'save error');
+    btn.textContent = '保存しました ✓';
+    try { localStorage.removeItem(QC_KEY); } catch(e) {}
+    QUESTIONS.length = 0;
+    _saveTabTimer = setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = 'GASに保存する';
+      initCloud();
+      switchTab('answer');
+    }, 800);
+  } catch(e) {
+    alert('保存に失敗しました: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = 'GASに保存する';
+  }
+}
+
+// type-tab のイベント設定
+document.querySelectorAll('#eq-type-tabs .type-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('#eq-type-tabs .type-tab').forEach(t => t.classList.remove('sel'));
+    tab.classList.add('sel');
+    editSelectedType = tab.dataset.t;
+    renderEditTypeParams();
+  };
+});
+document.getElementById('eq-add-btn').onclick = () => openEditForm(null);
+
+// 初期化
+document.getElementById('cloud-overlay').classList.add('hidden');
+if (!GAS_URL) {
+  showSetupScreen(false);
+} else {
+  initCloud();
+}
 </script>
 </body>
 </html>
