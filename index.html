@@ -696,7 +696,35 @@ function renderEditList() {
 
 const EQ_TYPE_PARAMS = {
   swipe: () => '',
-  dial: () => `<div class="form-row-grid"><div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="40"></div><div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="120"></div></div><div class="form-row-grid"><div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="ep-step" type="number" value="1" step="any"></div><div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit" type="text" placeholder="kg…"></div></div>`,
+  dial: () => `
+<div class="form-row-grid">
+  <div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="40"></div>
+  <div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="120"></div>
+</div>
+<div class="form-row-grid">
+  <div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="ep-step" type="number" value="1" step="any"></div>
+  <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit" type="text" placeholder="kg…"></div>
+</div>
+<div class="form-row" style="margin-top:6px;">
+  <label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--sub);cursor:pointer;">
+    <input type="checkbox" id="ep-dial2-enable" onchange="document.getElementById('ep-dial2-fields').style.display=this.checked?'block':'none';" style="width:18px;height:18px;accent-color:var(--accent);">
+    第2ダイヤルを追加（例: 時間.分、整数.小数）
+  </label>
+</div>
+<div id="ep-dial2-fields" style="display:none;margin-top:10px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1.5px solid var(--border);">
+  <div class="form-row" style="margin-bottom:10px;">
+    <label class="form-label">区切り文字</label>
+    <input class="form-input" id="ep-separator" type="text" value="." placeholder="例: .(小数点), :(コロン)" style="max-width:140px;">
+  </div>
+  <div class="form-row-grid">
+    <div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min2" type="number" value="0"></div>
+    <div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max2" type="number" value="9"></div>
+  </div>
+  <div class="form-row-grid">
+    <div class="form-row"><label class="form-label">刻み</label><input class="form-input" id="ep-step2" type="number" value="1" step="any"></div>
+    <div class="form-row"><label class="form-label">単位</label><input class="form-input" id="ep-unit2" type="text" placeholder="省略可"></div>
+  </div>
+</div>`,
   tap: () => `<div class="form-row-grid"><div class="form-row"><label class="form-label">最小値</label><input class="form-input" id="ep-min" type="number" value="1"></div><div class="form-row"><label class="form-label">最大値</label><input class="form-input" id="ep-max" type="number" value="5"></div></div>`,
   multi: () => `<div class="form-row"><label class="form-label">選択肢（カンマ区切り）</label><input class="form-input" id="ep-options" type="text" placeholder="カロリー, タンパク質, 野菜"></div>`,
   burst: () => `<div class="form-row"><label class="form-label">最大連打数</label><input class="form-input" id="ep-max" type="number" value="10" min="1"></div>`,
@@ -721,6 +749,15 @@ function openEditForm(idx) {
       const pMax = document.getElementById('ep-max'); if (pMax) pMax.value = q.max;
       const pStep = document.getElementById('ep-step'); if (pStep) pStep.value = q.step || 1;
       const pUnit = document.getElementById('ep-unit'); if (pUnit) pUnit.value = q.unit || '';
+      if (q.dial2) {
+        const cb = document.getElementById('ep-dial2-enable'); if (cb) { cb.checked = true; }
+        const fields = document.getElementById('ep-dial2-fields'); if (fields) fields.style.display = 'block';
+        const pSep = document.getElementById('ep-separator'); if (pSep) pSep.value = q.separator !== undefined ? q.separator : '.';
+        const pMin2 = document.getElementById('ep-min2'); if (pMin2) pMin2.value = q.dial2.min ?? 0;
+        const pMax2 = document.getElementById('ep-max2'); if (pMax2) pMax2.value = q.dial2.max ?? 9;
+        const pStep2 = document.getElementById('ep-step2'); if (pStep2) pStep2.value = q.dial2.step || 1;
+        const pUnit2 = document.getElementById('ep-unit2'); if (pUnit2) pUnit2.value = q.dial2.unit || '';
+      }
     } else if (q.type === 'tap') {
       const pMin = document.getElementById('ep-min'); if (pMin) pMin.value = q.min || 1;
       const pMax = document.getElementById('ep-max'); if (pMax) pMax.value = q.max || 5;
@@ -759,6 +796,17 @@ function confirmEditForm() {
     const unit = document.getElementById('ep-unit').value.trim();
     if (isNaN(min) || isNaN(max) || min >= max) { alert('最小値・最大値を正しく入力してください'); return; }
     q = { ...q, min, max, step }; if (unit) q.unit = unit;
+    const dial2Enabled = document.getElementById('ep-dial2-enable')?.checked;
+    if (dial2Enabled) {
+      const min2 = parseFloat(document.getElementById('ep-min2')?.value);
+      const max2 = parseFloat(document.getElementById('ep-max2')?.value);
+      const step2 = parseFloat(document.getElementById('ep-step2')?.value) || 1;
+      const unit2 = document.getElementById('ep-unit2')?.value.trim() || '';
+      const sep = document.getElementById('ep-separator')?.value ?? '.';
+      if (isNaN(min2) || isNaN(max2) || min2 >= max2) { alert('第2ダイヤルの最小値・最大値を正しく入力してください'); return; }
+      q.dial2 = { min: min2, max: max2, step: step2 }; if (unit2) q.dial2.unit = unit2;
+      q.separator = sep;
+    }
   } else if (editSelectedType === 'tap') {
     const min = parseInt(document.getElementById('ep-min').value);
     const max = parseInt(document.getElementById('ep-max').value);
