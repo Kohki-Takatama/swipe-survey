@@ -285,7 +285,75 @@ export function buildBody(q, qi) {
   return s;
 }
 
-export const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst, body: buildBody };
+export function buildHead(q, qi) {
+  const isLast = qi === state.QUESTIONS.length - 1;
+  const s = makeScreen(q, qi);
+  state.answers[q.label] = [];
+
+  const wrap = el('div', 'body-map-wrap');
+
+  const svgWrap = el('div', '');
+  svgWrap.style.cssText = 'position:relative;width:120px;height:140px;';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 120 140');
+  svg.style.cssText = 'width:120px;height:140px;touch-action:manipulation;';
+
+  // 顔の輪郭（非タップ）
+  const outline = document.createElementNS(NS, 'ellipse');
+  outline.setAttribute('cx', '60'); outline.setAttribute('cy', '70');
+  outline.setAttribute('rx', '55'); outline.setAttribute('ry', '65');
+  outline.setAttribute('fill', 'var(--bg)');
+  outline.setAttribute('stroke', 'var(--border)'); outline.setAttribute('stroke-width', '2');
+  outline.style.pointerEvents = 'none';
+  svg.appendChild(outline);
+
+  const noteEl = el('div', 'body-note', '不調箇所をタップして選択');
+
+  const headZones = [
+    ['forehead', '額',   'rect',    {x:30,  y:5,   width:60, height:22, rx:10}],
+    ['r-eye',    '右目', 'ellipse', {cx:38, cy:45, rx:12,   ry:8}],
+    ['l-eye',    '左目', 'ellipse', {cx:82, cy:45, rx:12,   ry:8}],
+    ['r-ear',    '右耳', 'ellipse', {cx:8,  cy:70, rx:8,    ry:14}],
+    ['l-ear',    '左耳', 'ellipse', {cx:112,cy:70, rx:8,    ry:14}],
+    ['nose',     '鼻',   'ellipse', {cx:60, cy:72, rx:9,    ry:12}],
+    ['r-cheek',  '右頬', 'ellipse', {cx:30, cy:88, rx:16,   ry:14}],
+    ['l-cheek',  '左頬', 'ellipse', {cx:90, cy:88, rx:16,   ry:14}],
+    ['mouth',    '口',   'rect',    {x:38,  y:100, width:44, height:16, rx:8}],
+    ['chin',     '顎',   'ellipse', {cx:60, cy:125, rx:20,  ry:10}],
+  ];
+
+  headZones.forEach(([id, name, tag, attrs]) => {
+    const zone = document.createElementNS(NS, tag);
+    zone.setAttribute('class', 'body-zone');
+    zone.setAttribute('data-name', name);
+    Object.entries(attrs).forEach(([k, v]) => zone.setAttribute(k, v));
+    zone.addEventListener('click', () => {
+      const arr = state.answers[q.label];
+      const idx = arr.indexOf(name);
+      if (idx >= 0) arr.splice(idx, 1); else arr.push(name);
+      zone.classList.toggle('sel', idx < 0);
+      noteEl.textContent = arr.length > 0 ? arr.join('、') : '不調箇所をタップして選択';
+    });
+    svg.appendChild(zone);
+  });
+
+  svgWrap.appendChild(svg);
+  wrap.appendChild(svgWrap);
+  wrap.appendChild(noteEl);
+  s.appendChild(wrap);
+
+  const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
+  s.append(memoBtn, memoOverlay, memoSheet);
+
+  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ');
+  btn.onclick = isLast ? goToDone : next;
+  s.appendChild(btn);
+  return s;
+}
+
+export const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst, body: buildBody, head: buildHead };
 
 export function buildAll() {
   const cont = document.getElementById('screens'); cont.innerHTML = '';
