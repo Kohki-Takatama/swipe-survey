@@ -37,6 +37,7 @@ export const EQ_TYPE_PARAMS = {
   multi: () => `<div class="form-row"><label class="form-label">選択肢（カンマ区切り）</label><input class="form-input" id="ep-options" type="text" placeholder="例：カロリー, タンパク質, 野菜, 水分"></div>`,
   burst: () => `<div class="form-row"><label class="form-label">最大連打数</label><input class="form-input" id="ep-max" type="number" value="10" min="1"><div class="form-hint" style="font-size:12px;color:var(--sub);margin-top:5px;">この回数に達すると自動で次へ進みます</div></div>`,
   body:  () => '',
+  head:  () => '',
 };
 
 export const EQ_LABEL_PLACEHOLDERS = {
@@ -46,6 +47,7 @@ export const EQ_LABEL_PLACEHOLDERS = {
   multi: '例：今日意識できた食事',
   burst: '例：今日のワクワク度',
   body:  '例：不調箇所',
+  head:  '例：頭痛の箇所',
 };
 
 export async function loadEditQuestions() {

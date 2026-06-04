@@ -285,7 +285,87 @@ export function buildBody(q, qi) {
   return s;
 }
 
-export const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst, body: buildBody };
+export function buildHead(q, qi) {
+  const isLast = qi === state.QUESTIONS.length - 1;
+  const s = makeScreen(q, qi);
+  state.answers[q.label] = [];
+
+  const wrap = el('div', 'body-map-wrap');
+
+  const svgWrap = el('div', '');
+  svgWrap.style.cssText = 'position:relative;width:120px;height:148px;';
+
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 120 148');
+  svg.style.cssText = 'width:120px;height:148px;touch-action:manipulation;';
+
+  // 顔の輪郭（非タップ）
+  const outline = document.createElementNS(NS, 'ellipse');
+  outline.setAttribute('cx', '60'); outline.setAttribute('cy', '76');
+  outline.setAttribute('rx', '52'); outline.setAttribute('ry', '66');
+  outline.setAttribute('fill', 'var(--bg)');
+  outline.setAttribute('stroke', 'var(--border)'); outline.setAttribute('stroke-width', '2');
+  outline.style.pointerEvents = 'none';
+  svg.appendChild(outline);
+
+  // 眉毛（装飾・非タップ）
+  [['M 28,55 Q 43,46 58,55', 'right'], ['M 62,55 Q 77,46 92,55', 'left']].forEach(([d]) => {
+    const brow = document.createElementNS(NS, 'path');
+    brow.setAttribute('d', d);
+    brow.setAttribute('fill', 'none');
+    brow.setAttribute('stroke', 'var(--sub)');
+    brow.setAttribute('stroke-width', '2.5');
+    brow.setAttribute('stroke-linecap', 'round');
+    brow.style.pointerEvents = 'none';
+    svg.appendChild(brow);
+  });
+
+  const noteEl = el('div', 'body-note', '不調箇所をタップして選択');
+
+  const headZones = [
+    ['forehead', '額',   'rect',    {x:22,  y:12,  width:76, height:26, rx:10}],
+    ['r-eye',    '右目', 'ellipse', {cx:43, cy:65, rx:14,   ry:7}],
+    ['l-eye',    '左目', 'ellipse', {cx:77, cy:65, rx:14,   ry:7}],
+    ['r-ear',    '右耳', 'ellipse', {cx:8,  cy:78, rx:8,    ry:13}],
+    ['l-ear',    '左耳', 'ellipse', {cx:112,cy:78, rx:8,    ry:13}],
+    ['nose',     '鼻',   'ellipse', {cx:60, cy:87, rx:6,    ry:7}],
+    ['r-cheek',  '右頬', 'ellipse', {cx:32, cy:99, rx:14,   ry:11}],
+    ['l-cheek',  '左頬', 'ellipse', {cx:88, cy:99, rx:14,   ry:11}],
+    ['mouth',    '口',   'rect',    {x:38,  y:112, width:44, height:13, rx:7}],
+    ['chin',     '顎',   'ellipse', {cx:60, cy:132, rx:21,  ry:10}],
+  ];
+
+  headZones.forEach(([id, name, tag, attrs]) => {
+    const zone = document.createElementNS(NS, tag);
+    zone.setAttribute('class', 'body-zone');
+    zone.setAttribute('data-name', name);
+    Object.entries(attrs).forEach(([k, v]) => zone.setAttribute(k, v));
+    zone.addEventListener('click', () => {
+      const arr = state.answers[q.label];
+      const idx = arr.indexOf(name);
+      if (idx >= 0) arr.splice(idx, 1); else arr.push(name);
+      zone.classList.toggle('sel', idx < 0);
+      noteEl.textContent = arr.length > 0 ? arr.join('、') : '不調箇所をタップして選択';
+    });
+    svg.appendChild(zone);
+  });
+
+  svgWrap.appendChild(svg);
+  wrap.appendChild(svgWrap);
+  wrap.appendChild(noteEl);
+  s.appendChild(wrap);
+
+  const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
+  s.append(memoBtn, memoOverlay, memoSheet);
+
+  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ');
+  btn.onclick = isLast ? goToDone : next;
+  s.appendChild(btn);
+  return s;
+}
+
+export const BUILDERS = { swipe: buildSwipe, dial: buildDial, tap: buildTap, multi: buildMulti, burst: buildBurst, body: buildBody, head: buildHead };
 
 export function buildAll() {
   const cont = document.getElementById('screens'); cont.innerHTML = '';
