@@ -194,9 +194,9 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .splash-sub{font-size:14px;color:var(--sub);}
 @keyframes splash-pop{0%{transform:scale(.6);opacity:0;}100%{transform:scale(1);opacity:1;}}
 /* 設問編集モーダル */
-.eq-modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s ease;}
+.eq-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:300;opacity:0;pointer-events:none;transition:opacity .3s ease;}
 .eq-modal-overlay.open{opacity:1;pointer-events:all;}
-.eq-modal{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;z-index:301;max-height:88vh;display:none;flex-direction:column;overflow:hidden;}
+.eq-modal{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-radius:20px 20px 0 0;z-index:301;max-height:88vh;display:none;flex-direction:column;overflow:hidden;}
 .eq-modal.open{display:flex;animation:eq-slide-up .35s cubic-bezier(.4,0,.2,1) forwards;}
 .eq-modal.closing{display:flex;animation:eq-slide-down .3s cubic-bezier(.4,0,.2,1) forwards;}
 @keyframes eq-slide-up{from{transform:translateY(100%);}to{transform:translateY(0);}}
