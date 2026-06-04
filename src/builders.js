@@ -293,35 +293,47 @@ export function buildHead(q, qi) {
   const wrap = el('div', 'body-map-wrap');
 
   const svgWrap = el('div', '');
-  svgWrap.style.cssText = 'position:relative;width:120px;height:140px;';
+  svgWrap.style.cssText = 'position:relative;width:120px;height:148px;';
 
   const NS = 'http://www.w3.org/2000/svg';
   const svg = document.createElementNS(NS, 'svg');
-  svg.setAttribute('viewBox', '0 0 120 140');
-  svg.style.cssText = 'width:120px;height:140px;touch-action:manipulation;';
+  svg.setAttribute('viewBox', '0 0 120 148');
+  svg.style.cssText = 'width:120px;height:148px;touch-action:manipulation;';
 
   // 顔の輪郭（非タップ）
   const outline = document.createElementNS(NS, 'ellipse');
-  outline.setAttribute('cx', '60'); outline.setAttribute('cy', '70');
-  outline.setAttribute('rx', '55'); outline.setAttribute('ry', '65');
+  outline.setAttribute('cx', '60'); outline.setAttribute('cy', '76');
+  outline.setAttribute('rx', '52'); outline.setAttribute('ry', '66');
   outline.setAttribute('fill', 'var(--bg)');
   outline.setAttribute('stroke', 'var(--border)'); outline.setAttribute('stroke-width', '2');
   outline.style.pointerEvents = 'none';
   svg.appendChild(outline);
 
+  // 眉毛（装飾・非タップ）
+  [['M 28,55 Q 43,46 58,55', 'right'], ['M 62,55 Q 77,46 92,55', 'left']].forEach(([d]) => {
+    const brow = document.createElementNS(NS, 'path');
+    brow.setAttribute('d', d);
+    brow.setAttribute('fill', 'none');
+    brow.setAttribute('stroke', 'var(--sub)');
+    brow.setAttribute('stroke-width', '2.5');
+    brow.setAttribute('stroke-linecap', 'round');
+    brow.style.pointerEvents = 'none';
+    svg.appendChild(brow);
+  });
+
   const noteEl = el('div', 'body-note', '不調箇所をタップして選択');
 
   const headZones = [
-    ['forehead', '額',   'rect',    {x:30,  y:5,   width:60, height:22, rx:10}],
-    ['r-eye',    '右目', 'ellipse', {cx:38, cy:45, rx:12,   ry:8}],
-    ['l-eye',    '左目', 'ellipse', {cx:82, cy:45, rx:12,   ry:8}],
-    ['r-ear',    '右耳', 'ellipse', {cx:8,  cy:70, rx:8,    ry:14}],
-    ['l-ear',    '左耳', 'ellipse', {cx:112,cy:70, rx:8,    ry:14}],
-    ['nose',     '鼻',   'ellipse', {cx:60, cy:72, rx:9,    ry:12}],
-    ['r-cheek',  '右頬', 'ellipse', {cx:30, cy:88, rx:16,   ry:14}],
-    ['l-cheek',  '左頬', 'ellipse', {cx:90, cy:88, rx:16,   ry:14}],
-    ['mouth',    '口',   'rect',    {x:38,  y:100, width:44, height:16, rx:8}],
-    ['chin',     '顎',   'ellipse', {cx:60, cy:125, rx:20,  ry:10}],
+    ['forehead', '額',   'rect',    {x:22,  y:12,  width:76, height:26, rx:10}],
+    ['r-eye',    '右目', 'ellipse', {cx:43, cy:65, rx:14,   ry:7}],
+    ['l-eye',    '左目', 'ellipse', {cx:77, cy:65, rx:14,   ry:7}],
+    ['r-ear',    '右耳', 'ellipse', {cx:8,  cy:78, rx:8,    ry:13}],
+    ['l-ear',    '左耳', 'ellipse', {cx:112,cy:78, rx:8,    ry:13}],
+    ['nose',     '鼻',   'ellipse', {cx:60, cy:87, rx:6,    ry:7}],
+    ['r-cheek',  '右頬', 'ellipse', {cx:32, cy:99, rx:14,   ry:11}],
+    ['l-cheek',  '左頬', 'ellipse', {cx:88, cy:99, rx:14,   ry:11}],
+    ['mouth',    '口',   'rect',    {x:38,  y:112, width:44, height:13, rx:7}],
+    ['chin',     '顎',   'ellipse', {cx:60, cy:132, rx:21,  ry:10}],
   ];
 
   headZones.forEach(([id, name, tag, attrs]) => {
