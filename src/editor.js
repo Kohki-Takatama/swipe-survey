@@ -99,6 +99,8 @@ export function renderEditList() {
   });
 }
 
+let _closeAbort = null;
+
 export function openEditForm(idx) {
   state.editingIdx = idx;
   const isEdit = idx !== null;
@@ -138,15 +140,29 @@ export function openEditForm(idx) {
     renderEditTypeParams();
     document.getElementById('eq-label').value = '';
   }
+  const modal = document.getElementById('eq-modal');
+  // クローズアニメーション中に再度開かれた場合、closing クラスをクリア
+  modal.classList.remove('closing');
+  if (_closeAbort) { _closeAbort.abort(); _closeAbort = null; }
   document.getElementById('eq-modal-overlay').classList.add('open');
-  document.getElementById('eq-modal').classList.add('open');
+  modal.classList.add('open');
   document.getElementById('eq-label').focus();
 }
 
 export function closeEditForm() {
   state.editingIdx = null;
-  document.getElementById('eq-modal-overlay').classList.remove('open');
-  document.getElementById('eq-modal').classList.remove('open');
+  const modal = document.getElementById('eq-modal');
+  const overlay = document.getElementById('eq-modal-overlay');
+  if (!modal.classList.contains('open')) return;
+  // 前回の animationend リスナーをキャンセル
+  if (_closeAbort) _closeAbort.abort();
+  _closeAbort = new AbortController();
+  overlay.classList.remove('open');
+  modal.classList.add('closing');
+  modal.addEventListener('animationend', () => {
+    modal.classList.remove('open', 'closing');
+    _closeAbort = null;
+  }, { once: true, signal: _closeAbort.signal });
 }
 
 export function renderEditTypeParams() {
