@@ -118,7 +118,7 @@ export function buildTap(q, qi) {
 }
 
 export function buildMulti(q, qi) {
-  const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); state.answers[q.label] = [];
+  const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); s.classList.add('scrollable'); state.answers[q.label] = [];
   const grid = el('div', 'multi-grid');
   q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { chip.classList.toggle('sel'); const arr = state.answers[q.label]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
   s.appendChild(grid); s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
@@ -177,6 +177,7 @@ export function buildBurst(q, qi) {
 export function buildBody(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1;
   const s = makeScreen(q, qi);
+  s.classList.add('scrollable');
   state.answers[q.label] = [];
 
   const wrap = el('div', 'body-map-wrap');
@@ -288,6 +289,7 @@ export function buildBody(q, qi) {
 export function buildHead(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1;
   const s = makeScreen(q, qi);
+  s.classList.add('scrollable');
   state.answers[q.label] = [];
 
   const wrap = el('div', 'body-map-wrap');

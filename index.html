@@ -17,6 +17,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .screen{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:56px 28px calc(72px + env(safe-area-inset-bottom));opacity:0;transform:translateX(100%);transition:transform .38s cubic-bezier(.4,0,.2,1),opacity .38s ease;pointer-events:none;}
 .screen.active{opacity:1;transform:translateX(0);pointer-events:all;}
 .screen.leaving{opacity:0;transform:translateX(-48px);}
+.screen.scrollable{justify-content:flex-start;overflow-y:auto;-webkit-overflow-scrolling:touch;}
 .q-num{font-size:13px;color:var(--sub);letter-spacing:.06em;margin-bottom:14px;font-weight:500;}
 .q-text{font-size:22px;font-weight:700;text-align:center;line-height:1.45;margin-bottom:48px;}
 .swipe-zone{width:100%;height:230px;position:relative;display:flex;align-items:center;justify-content:center;}

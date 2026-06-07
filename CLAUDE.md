@@ -47,6 +47,28 @@
 
 ## Claude 開発ルール
 
+### docs/ を常に最新に保つこと
+`docs/` 以下に仕様・タスク一覧・残タスクを記録し、実装のたびに更新すること。
+context window が切れても開発を継続できるようにするのが目的。
+
+| ファイル | 内容 |
+|---|---|
+| `docs/spec.md` | アプリ仕様（設問タイプ、データ構造、GAS API、ファイル構成） |
+| `docs/tasks.md` | タスク一覧（完了済み PR 含む）と残タスク |
+
+**更新タイミング**: 機能追加・修正の PR を作成・マージするたびに該当箇所を更新すること。
+
+### Modern Web Guidance（HTML/CSS/JS タスク時）
+
+`.agents/skills/modern-web-guidance/` がインストール済み。
+HTML・CSS・クライアントサイド JS に関わるタスクを開始する前に、必ず Modern Web Guidance を参照すること。
+
+**ブラウザサポートポリシー:**
+ターゲット: **iOS Safari 17+ / Chrome Android 112+**（= Baseline 2023 相当）
+- Baseline Widely Available の機能はフォールバックなしで使用可
+- Baseline Newly Available の機能は機能検出（feature detection）を行い、graceful degradation を実装すること
+- ポリフィルは原則使用しない（バンドルサイズ・技術的負債の観点から）
+
 ### ブランチへの push 前に必ず確認すること
 ブランチに push する前に、**そのブランチが既に main にマージ済みでないか**を確認すること。
 確認コマンド: `gh pr view <PR番号> --json state,mergedAt` または `git log --oneline origin/main | grep <ブランチ名>`
