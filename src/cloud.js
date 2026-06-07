@@ -1,7 +1,6 @@
 // src/cloud.js
 import { state } from './state.js';
-import { buildAll } from './builders.js';
-import { goTo } from './navigation.js';
+import { showNotebookList } from './notebooks.js';
 
 export function showSetupScreen(preload) {
   const input = document.getElementById('gas-url-input');
@@ -42,34 +41,56 @@ export function showUpdateBanner() { document.getElementById('update-banner').cl
 export function hideUpdateBanner() { document.getElementById('update-banner').classList.remove('show'); }
 
 export function applyCloudUpdate() {
-  if (!state._pendingQuestions || state._pendingQuestions.length === 0) return;
-  state.QUESTIONS.length = 0; state._pendingQuestions.forEach(q => state.QUESTIONS.push(q)); state._pendingQuestions = null;
-  hideUpdateBanner(); buildAll(); setTimeout(() => goTo(0), 40);
+  if (!state._pendingNotebooks || state._pendingNotebooks.length === 0) return;
+  state.notebooks = state._pendingNotebooks;
+  state._pendingNotebooks = null;
+  hideUpdateBanner();
+  showNotebookList();
+}
+
+function normalizeNotebooks(cfg) {
+  if (Array.isArray(cfg.notebooks) && cfg.notebooks.length > 0) return cfg.notebooks;
+  if (Array.isArray(cfg.questions) && cfg.questions.length > 0) {
+    return [{ id: 'nb_default', name: 'チェックイン', frequency: 'daily', order: 0, questions: cfg.questions }];
+  }
+  return [];
 }
 
 export async function fetchAndCache() {
   const sep = state.GAS_URL.includes('?') ? '&' : '?';
   const res = await fetch(state.GAS_URL + sep + 'action=config'); const data = await res.json();
   if (data.status !== 'ok') throw new Error(data.message || 'fetch error');
-  const cfg = data.config || {}; const qs = Array.isArray(cfg.questions) ? cfg.questions : []; const version = cfg.version ?? null;
-  if (qs.length > 0) { try { localStorage.setItem(state.QC_KEY, JSON.stringify({ questions: qs, version, updatedAt: cfg.updatedAt })); } catch(e) {} }
-  return { questions: qs, version };
+  const cfg = data.config || {}; const version = cfg.version ?? null;
+  const notebooks = normalizeNotebooks(cfg);
+  if (notebooks.length > 0) { try { localStorage.setItem(state.QC_KEY, JSON.stringify({ notebooks, version, updatedAt: cfg.updatedAt })); } catch(e) {} }
+  return { notebooks, version };
 }
 
 export async function initCloud() {
   let cached = null;
   try { const raw = localStorage.getItem(state.QC_KEY); if (raw) cached = JSON.parse(raw); } catch(e) {}
-  if (cached && Array.isArray(cached.questions) && cached.questions.length > 0) {
-    cached.questions.forEach(q => state.QUESTIONS.push(q)); buildAll(); setTimeout(() => goTo(0), 40); hideCloudOverlay();
-    fetchAndCache().then(({ questions, version }) => { if (version != null && version !== cached.version && questions.length > 0) { state._pendingQuestions = questions; showUpdateBanner(); } }).catch(() => {});
+
+  // キャッシュを notebooks 形式に正規化（旧 questions 形式も対応）
+  let cachedNotebooks = null;
+  if (cached) cachedNotebooks = normalizeNotebooks(cached);
+
+  if (cachedNotebooks && cachedNotebooks.length > 0) {
+    state.notebooks = cachedNotebooks; showNotebookList(); hideCloudOverlay();
+    fetchAndCache().then(({ notebooks, version }) => { if (version != null && version !== cached.version && notebooks.length > 0) { state._pendingNotebooks = notebooks; showUpdateBanner(); } }).catch(() => {});
   } else {
     showCloudOverlay('loading');
-    try { const { questions } = await fetchAndCache(); if (questions.length === 0) { showCloudOverlay('error'); return; } questions.forEach(q => state.QUESTIONS.push(q)); buildAll(); setTimeout(() => goTo(0), 40); hideCloudOverlay(); }
-    catch(e) { showCloudOverlay('error'); }
+    try {
+      const { notebooks } = await fetchAndCache();
+      if (notebooks.length === 0) { showCloudOverlay('error'); return; }
+      state.notebooks = notebooks; showNotebookList(); hideCloudOverlay();
+    } catch(e) { showCloudOverlay('error'); }
   }
 }
 
 export function retryCloudLoad() {
-  showCloudOverlay('loading'); state.QUESTIONS.length = 0;
-  fetchAndCache().then(({ questions }) => { if (questions.length === 0) { showCloudOverlay('error'); return; } questions.forEach(q => state.QUESTIONS.push(q)); buildAll(); setTimeout(() => goTo(0), 40); hideCloudOverlay(); }).catch(() => showCloudOverlay('error'));
+  showCloudOverlay('loading');
+  fetchAndCache().then(({ notebooks }) => {
+    if (notebooks.length === 0) { showCloudOverlay('error'); return; }
+    state.notebooks = notebooks; showNotebookList(); hideCloudOverlay();
+  }).catch(() => showCloudOverlay('error'));
 }

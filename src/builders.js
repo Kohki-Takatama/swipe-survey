@@ -383,9 +383,18 @@ export function buildAll() {
       '<button class="done-submit-btn" id="done-submit-btn">記録する</button>' +
     '</div>' +
     '<div class="done-status" id="done-status"></div>' +
+    (state.notebooks.length > 0 ? '<button class="done-list-btn" id="done-list-btn">← 一覧に戻る</button>' : '') +
     '</div>';
   done.querySelector('#done-retry-btn').onclick = resetAll;
   done.querySelector('#done-submit-btn').onclick = sendAndDone;
+  if (state.notebooks.length > 0) {
+    done.querySelector('#done-list-btn').onclick = () => {
+      Object.keys(state.answers).forEach(k => delete state.answers[k]);
+      state._submitted = false;
+      state.activeNotebookId = null;
+      window.showNotebookList?.();
+    };
+  }
   cont.appendChild(done); setProgress(0);
   state._submitted = false;
   window.removeEventListener('beforeunload', state._beforeUnloadHandler);
@@ -453,6 +462,7 @@ export async function sendAndDone() {
     .catch(e => console.warn('POST failed:', e));
   setTimeout(() => {
     state._submitted = true;
+    window.markDoneToday?.(state.activeNotebookId);
     if (iconEl) iconEl.textContent = '🎉';
     if (titleEl) titleEl.textContent = '記録しました ✓';
     if (statusEl) { statusEl.textContent = ''; }

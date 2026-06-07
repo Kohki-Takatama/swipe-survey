@@ -11,6 +11,7 @@ export function switchTab(tab) {
   document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
   document.getElementById('edit-panel').classList.toggle('hidden', tab !== 'edit');
   document.getElementById('settings-panel').classList.toggle('hidden', tab !== 'settings');
+  if (tab === 'answer' && state.notebooks.length > 0) window.showNotebookList?.();
   if (tab === 'edit') loadEditQuestions();
   if (tab === 'settings') loadSettings();
 }
