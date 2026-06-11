@@ -5,6 +5,7 @@ import { goTo } from './navigation.js';
 import { initCloud, showSetupScreen, retryCloudLoad, saveGasUrl, applyCloudUpdate } from './cloud.js';
 import { openEditForm, closeEditForm, confirmEditForm, saveQuestions, renderEditTypeParams } from './editor.js';
 import { switchTab, loadSettings } from './settings.js';
+import { showNotebookList, markDoneToday, startNotebook } from './notebooks.js';
 
 // drag event listeners
 window.addEventListener('mousemove', e => { state.onDragX?.(e.clientX); state.onDragY?.(e.clientY); });
@@ -74,4 +75,5 @@ Object.assign(window, {
   applyCloudUpdate, showSetupScreen, retryCloudLoad, saveGasUrl,
   switchTab, openEditForm, closeEditForm, confirmEditForm, saveQuestions,
   loadSettings, hideSplash, goToDone, sendAndDone, resetAll,
+  showNotebookList, markDoneToday, startNotebook,
 });
