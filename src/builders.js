@@ -457,7 +457,8 @@ export async function sendAndDone() {
   const iconEl = document.getElementById('done-icon');
   const titleEl = document.getElementById('done-title');
   if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '送信中...'; }
-  const payload = { type: 'answer', timestamp: new Date().toLocaleString('ja-JP'), answers: state.answers };
+  const activeNb = state.notebooks.find(nb => nb.id === state.activeNotebookId);
+  const payload = { type: 'answer', timestamp: new Date().toLocaleString('ja-JP'), answers: state.answers, notebookName: activeNb ? activeNb.name : null };
   fetch(state.GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
     .catch(e => console.warn('POST failed:', e));
   setTimeout(() => {
