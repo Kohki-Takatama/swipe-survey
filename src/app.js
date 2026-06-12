@@ -3,8 +3,8 @@ import { state } from './state.js';
 import { buildAll, resetAll, next, goToDone, sendAndDone } from './builders.js';
 import { goTo } from './navigation.js';
 import { initCloud, showSetupScreen, retryCloudLoad, saveGasUrl, applyCloudUpdate } from './cloud.js';
-import { openEditForm, closeEditForm, confirmEditForm, saveQuestions, renderEditTypeParams } from './editor.js';
-import { switchTab, loadSettings } from './settings.js';
+import { openEditForm, closeEditForm, confirmEditForm, saveQuestions, renderEditTypeParams, onEditNotebookChange } from './editor.js';
+import { switchTab, loadSettings, renderSettingsNotebooks, openAddNotebookForm, cancelAddNotebook, confirmAddNotebook, deleteNotebook } from './settings.js';
 import { showNotebookList, markDoneToday, startNotebook } from './notebooks.js';
 
 // drag event listeners
@@ -76,4 +76,6 @@ Object.assign(window, {
   switchTab, openEditForm, closeEditForm, confirmEditForm, saveQuestions,
   loadSettings, hideSplash, goToDone, sendAndDone, resetAll,
   showNotebookList, markDoneToday, startNotebook,
+  onEditNotebookChange,
+  openAddNotebookForm, cancelAddNotebook, confirmAddNotebook, deleteNotebook,
 });

@@ -223,6 +223,18 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .eq-form-title{font-size:16px;font-weight:700;color:var(--text);}
 .eq-modal-close{width:30px;height:30px;border-radius:50%;border:none;background:var(--bg);color:var(--sub);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 .eq-modal-body{overflow-y:auto;padding:16px 20px calc(32px + env(safe-area-inset-bottom));flex:1;}
+.settings-nb-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;}
+.settings-nb-row:last-of-type{border-bottom:none;}
+.settings-nb-name{font-size:15px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.settings-nb-freq{font-size:12px;color:var(--sub);flex-shrink:0;}
+.settings-nb-del{padding:5px 10px;border-radius:8px;border:1.5px solid var(--border);background:transparent;color:var(--sub);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;touch-action:manipulation;}
+.settings-nb-form{margin-top:10px;padding:12px 14px;background:var(--bg);border-radius:12px;border:1.5px solid var(--border);display:none;}
+.settings-nb-form.open{display:block;}
+.settings-nb-form-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+.nb-select-wrap{position:relative;flex:1;}
+.nb-select-wrap::after{content:'▼';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--sub);pointer-events:none;}
+.nb-select-wrap .form-select{appearance:none;-webkit-appearance:none;padding-right:28px;width:100%;}
+.eq-nb-picker-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
 </style>
 </head>
 <body>
@@ -277,6 +289,32 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
       <span>読み込み中...</span>
     </div>
     <div id="edit-content">
+      <div id="eq-nb-picker" style="margin-bottom:12px">
+        <div class="form-label" style="margin-bottom:6px">ノートブック</div>
+        <div class="eq-nb-picker-row">
+          <div class="nb-select-wrap">
+            <select class="form-select" id="eq-nb-select" onchange="onEditNotebookChange(this.value)"></select>
+          </div>
+          <button class="settings-edit-btn" id="eq-nb-add-btn" onclick="openAddNotebookForm()">＋ 追加</button>
+        </div>
+        <div id="eq-nb-list"></div>
+        <div id="eq-nb-form" class="settings-nb-form">
+          <div class="settings-nb-form-row">
+            <input id="eq-nb-name-input" class="form-input" placeholder="ノートブック名" style="flex:1;min-width:0"/>
+          </div>
+          <div class="settings-nb-form-row">
+            <label class="form-label" style="margin:0;flex:1">頻度</label>
+            <select id="eq-nb-freq-select" class="form-select" style="width:auto">
+              <option value="daily">毎日</option>
+              <option value="anytime">随時</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <button class="settings-edit-btn" onclick="confirmAddNotebook()">作成</button>
+            <button class="settings-edit-btn" style="border-color:var(--sub);color:var(--sub)" onclick="cancelAddNotebook()">キャンセル</button>
+          </div>
+        </div>
+      </div>
       <div id="eq-list"></div>
       <button class="add-btn" id="eq-add-btn">＋ 設問を追加</button>
     </div>

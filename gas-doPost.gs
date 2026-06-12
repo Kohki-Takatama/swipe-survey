@@ -93,9 +93,10 @@ function saveConfig(payload) {
 function saveAnswer(payload) {
   const timestamp = payload.timestamp || new Date().toLocaleString('ja-JP');
   const answers   = payload.answers   || {};
+  const sheetName = payload.notebookName || SHEET_CHECKIN;
   const ss    = SpreadsheetApp.getActiveSpreadsheet();
-  let sheet   = ss.getSheetByName(SHEET_CHECKIN);
-  if (!sheet) sheet = ss.insertSheet(SHEET_CHECKIN);
+  let sheet   = ss.getSheetByName(sheetName);
+  if (!sheet) sheet = ss.insertSheet(sheetName);
   const answerKeys = Object.keys(answers);
   const allKeys    = ['timestamp', ...answerKeys];
   let headers;

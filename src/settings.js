@@ -1,6 +1,7 @@
 // src/settings.js
 import { state } from './state.js';
-import { closeEditForm, loadEditQuestions } from './editor.js';
+import { el } from './utils.js';
+import { closeEditForm, loadEditQuestions, onEditNotebookChange } from './editor.js';
 import { initCloud, showSetupScreen } from './cloud.js';
 
 export function switchTab(tab) {
@@ -12,7 +13,7 @@ export function switchTab(tab) {
   document.getElementById('edit-panel').classList.toggle('hidden', tab !== 'edit');
   document.getElementById('settings-panel').classList.toggle('hidden', tab !== 'settings');
   if (tab === 'answer' && state.notebooks.length > 0) window.showNotebookList?.();
-  if (tab === 'edit') loadEditQuestions();
+  if (tab === 'edit') { loadEditQuestions(); renderSettingsNotebooks(); }
   if (tab === 'settings') loadSettings();
 }
 
@@ -31,4 +32,76 @@ export async function loadSettings() {
   } catch(e) {
     lastEl.textContent = '取得できませんでした';
   }
+  renderSettingsNotebooks();
+}
+
+export function renderSettingsNotebooks() {
+  const list = document.getElementById('eq-nb-list');
+  if (!list) return;
+  list.innerHTML = '';
+  if (state.notebooks.length === 0) {
+    const empty = el('div', '', 'ノートブックがありません');
+    empty.style.cssText = 'font-size:14px;color:var(--sub);padding:8px 0;';
+    list.appendChild(empty);
+    return;
+  }
+  state.notebooks.forEach(nb => {
+    const row = el('div', 'settings-nb-row');
+    const nameEl = el('div', 'settings-nb-name', nb.name);
+    const freqEl = el('div', 'settings-nb-freq', nb.frequency === 'daily' ? '毎日' : '随時');
+    const delBtn = el('button', 'settings-nb-del', '削除');
+    delBtn.onclick = () => deleteNotebook(nb.id);
+    row.append(nameEl, freqEl, delBtn);
+    list.appendChild(row);
+  });
+}
+
+export function openAddNotebookForm() {
+  document.getElementById('eq-nb-form').classList.add('open');
+  document.getElementById('eq-nb-add-btn').style.display = 'none';
+  document.getElementById('eq-nb-name-input').focus();
+}
+
+export function cancelAddNotebook() {
+  document.getElementById('eq-nb-form').classList.remove('open');
+  document.getElementById('eq-nb-add-btn').style.display = '';
+  document.getElementById('eq-nb-name-input').value = '';
+}
+
+export async function confirmAddNotebook() {
+  const name = document.getElementById('eq-nb-name-input').value.trim();
+  if (!name) return;
+  const freq = document.getElementById('eq-nb-freq-select').value;
+  const id = 'nb_' + Date.now().toString(36);
+  state.notebooks.push({ id, name, frequency: freq, order: state.notebooks.length, questions: [] });
+  cancelAddNotebook();
+  await saveNotebooksToGAS();
+  renderSettingsNotebooks();
+}
+
+export async function deleteNotebook(id) {
+  const nb = state.notebooks.find(n => n.id === id);
+  if (!nb) return;
+  if (!confirm(`"${nb.name}" を削除しますか？`)) return;
+  state.notebooks = state.notebooks.filter(n => n.id !== id);
+  // 削除したノートブックが設問タブで選択中だった場合、ピッカーをリセット
+  if (state.editNotebookId === id) {
+    const next = state.notebooks[0];
+    onEditNotebookChange(next ? next.id : null);
+  }
+  await saveNotebooksToGAS();
+  renderSettingsNotebooks();
+}
+
+async function saveNotebooksToGAS() {
+  if (!state.GAS_URL) return;
+  try {
+    await fetch(state.GAS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ type: 'config', config: { notebooks: state.notebooks } })
+    });
+    try { localStorage.removeItem(state.QC_KEY); } catch(e) {}
+  } catch(e) { console.warn('saveNotebooksToGAS failed:', e); }
 }
