@@ -104,21 +104,19 @@ export function buildDial(q, qi) {
 
 export function buildTap(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); state.answers[q.label] = null;
-  let autoTimer = null;
   const n = (q.max || 5) - (q.min || 1) + 1;
   const cont = el('div', 'scrub-container'); const ind = el('div', 'scrub-indicator'); const row = el('div', 'scrub-items');
   cont.appendChild(ind); cont.appendChild(row); const items = [];
   for (let i = 0; i < n; i++) { const it = el('div', 'scrub-item', String((q.min || 1) + i)); row.appendChild(it); items.push(it); }
   const setVal = i => { if (i < 0 || i >= n) return; const prev = state.answers[q.label]; const next_v = (q.min || 1) + i; if (prev !== next_v) vibrate(20); state.answers[q.label] = next_v; items.forEach((it, j) => it.classList.toggle('sel', j === i)); const w = cont.offsetWidth / n; ind.style.left = (i * w + 4) + 'px'; ind.style.width = (w - 8) + 'px'; ind.style.opacity = '1'; };
   const hitIdx = x => { const rect = cont.getBoundingClientRect(); return clamp(Math.floor((x - rect.left) / (rect.width / n)), 0, n - 1); };
-  const scheduleAdvance = () => { clearTimeout(autoTimer); autoTimer = setTimeout(() => { if (isLast) goToDone(); else next(); }, 800); };
-  const onStart = x => { setVal(hitIdx(x)); state.onDragX = cx => setVal(hitIdx(cx)); state.onDragDone = () => { state.onDragX = state.onDragDone = null; scheduleAdvance(); }; };
+  const onStart = x => { setVal(hitIdx(x)); state.onDragX = cx => setVal(hitIdx(cx)); state.onDragDone = () => { state.onDragX = state.onDragDone = null; }; };
   cont.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
   cont.addEventListener('touchstart', e => { e.preventDefault(); onStart(e.touches[0].clientX); }, { passive: false });
   s.appendChild(cont);
-  const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q, () => clearTimeout(autoTimer));
+  const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
   s.append(memoBtn, memoOverlay, memoSheet);
-  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ'); btn.onclick = () => { clearTimeout(autoTimer); if (state.answers[q.label] == null) { cont.classList.remove('shake'); void cont.offsetWidth; cont.classList.add('shake'); return; } if (isLast) goToDone(); else next(); }; s.appendChild(btn); return s;
+  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ'); btn.onclick = () => { if (state.answers[q.label] == null) { cont.classList.remove('shake'); void cont.offsetWidth; cont.classList.add('shake'); return; } if (isLast) goToDone(); else next(); }; s.appendChild(btn); return s;
 }
 
 export function buildMulti(q, qi) {
@@ -466,6 +464,8 @@ export async function sendAndDone() {
     .catch(e => console.warn('POST failed:', e));
   setTimeout(() => {
     state._submitted = true;
+    Object.keys(state.answers).filter(k => k.startsWith('[メモ] ')).forEach(k => delete state.answers[k]);
+    populateDone();
     window.markDoneToday?.(state.activeNotebookId);
     if (iconEl) iconEl.textContent = '🎉';
     if (titleEl) titleEl.textContent = '記録しました ✓';
