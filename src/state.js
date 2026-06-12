@@ -15,6 +15,7 @@ export const state = {
   _pendingNotebooks: null,
   notebooks: [],
   activeNotebookId: null,
+  editNotebookId: null,
   editQuestions: [],
   editSelectedType: 'swipe',
   editingIdx: null,

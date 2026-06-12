@@ -50,8 +50,41 @@ export const EQ_LABEL_PLACEHOLDERS = {
   head:  '例：頭痛の箇所',
 };
 
+function renderNotebookPicker() {
+  const sel = document.getElementById('eq-nb-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  if (state.notebooks.length === 0) {
+    sel.innerHTML = '<option value="">ノートブックがありません</option>';
+    state.editNotebookId = null;
+    return;
+  }
+  state.notebooks.forEach(nb => {
+    const opt = document.createElement('option');
+    opt.value = nb.id;
+    opt.textContent = nb.name;
+    if (nb.id === state.editNotebookId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+  if (!state.notebooks.find(n => n.id === state.editNotebookId)) {
+    state.editNotebookId = state.notebooks[0].id;
+    sel.value = state.editNotebookId;
+  }
+}
+
+function loadQuestionsForNotebook() {
+  const nb = state.notebooks.find(n => n.id === state.editNotebookId);
+  state.editQuestions = nb ? JSON.parse(JSON.stringify(nb.questions)) : [];
+  renderEditList();
+}
+
+export function onEditNotebookChange(id) {
+  state.editNotebookId = id;
+  loadQuestionsForNotebook();
+}
+
 export async function loadEditQuestions() {
-  if (!state.GAS_URL) { state.editQuestions = []; renderEditList(); return; }
+  if (!state.GAS_URL) { state.editQuestions = []; renderNotebookPicker(); renderEditList(); return; }
   const loadingEl = document.getElementById('edit-loading');
   const contentEl = document.getElementById('edit-content');
   loadingEl.classList.remove('hidden');
@@ -60,14 +93,22 @@ export async function loadEditQuestions() {
     const sep = state.GAS_URL.includes('?') ? '&' : '?';
     const res = await fetch(state.GAS_URL + sep + 'action=config');
     const data = await res.json();
-    const qs = (data.config && Array.isArray(data.config.questions)) ? data.config.questions : [];
-    state.editQuestions = JSON.parse(JSON.stringify(qs));
+    const cfg = data.config || {};
+    // notebooks 形式と旧 questions 形式の両方に対応
+    if (Array.isArray(cfg.notebooks) && cfg.notebooks.length > 0) {
+      state.notebooks = cfg.notebooks;
+    } else if (Array.isArray(cfg.questions) && cfg.questions.length > 0) {
+      if (state.notebooks.length === 0) {
+        state.notebooks = [{ id: 'nb_default', name: 'チェックイン', frequency: 'daily', order: 0, questions: cfg.questions }];
+      }
+    }
   } catch(e) {
-    state.editQuestions = [];
+    // fetch 失敗時はキャッシュ済みの state.notebooks をそのまま使う
   }
   loadingEl.classList.add('hidden');
   contentEl.style.visibility = '';
-  renderEditList();
+  renderNotebookPicker();
+  loadQuestionsForNotebook();
 }
 
 export function renderEditList() {
@@ -219,7 +260,10 @@ export async function saveQuestions() {
   btn.disabled = true;
   btn.textContent = '保存中...';
   try {
-    const payload = { type: 'config', config: { questions: state.editQuestions } };
+    // 選択中ノートブックに editQuestions をマージしてから全体を保存
+    const targetNb = state.notebooks.find(n => n.id === state.editNotebookId);
+    if (targetNb) targetNb.questions = state.editQuestions;
+    const payload = { type: 'config', config: { notebooks: state.notebooks } };
     const res = await fetch(state.GAS_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
