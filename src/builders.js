@@ -3,6 +3,8 @@ import { state } from './state.js';
 import { el, clamp, dialDec, idxToOff, offToIdx, ITEM_H, DRUM_CY, PAD } from './utils.js';
 import { goTo, setProgress } from './navigation.js';
 
+const vibrate = (ms = 30) => { try { navigator.vibrate?.(ms); } catch(e) {} };
+
 export function makeScreen(q, qi) {
   const s = el('div', 'screen');
   s.appendChild(el('div', 'q-num', (qi + 1) + ' / ' + state.QUESTIONS.length));
@@ -50,8 +52,8 @@ export function buildSwipe(q, qi) {
     if (!active) return; active = false; state.onDragX = state.onDragDone = null;
     card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
     const doNext = () => { if (memoSheet.classList.contains('open')) { autoTimer = setTimeout(doNext, 500); return; } next(); };
-    if (ox > THRESH) { state.answers[q.label] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; autoTimer = setTimeout(doNext, 370); }
-    else if (ox < -THRESH) { state.answers[q.label] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; autoTimer = setTimeout(doNext, 370); }
+    if (ox > THRESH) { vibrate(); state.answers[q.label] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; autoTimer = setTimeout(doNext, 370); }
+    else if (ox < -THRESH) { vibrate(); state.answers[q.label] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; autoTimer = setTimeout(doNext, 370); }
     else { card.style.transform = ''; badgeY.style.opacity = badgeN.style.opacity = 0; emoji.textContent = '🤔'; }
   };
   card.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
@@ -106,7 +108,7 @@ export function buildTap(q, qi) {
   const cont = el('div', 'scrub-container'); const ind = el('div', 'scrub-indicator'); const row = el('div', 'scrub-items');
   cont.appendChild(ind); cont.appendChild(row); const items = [];
   for (let i = 0; i < n; i++) { const it = el('div', 'scrub-item', String((q.min || 1) + i)); row.appendChild(it); items.push(it); }
-  const setVal = i => { if (i < 0 || i >= n) return; state.answers[q.label] = (q.min || 1) + i; items.forEach((it, j) => it.classList.toggle('sel', j === i)); const w = cont.offsetWidth / n; ind.style.left = (i * w + 4) + 'px'; ind.style.width = (w - 8) + 'px'; ind.style.opacity = '1'; };
+  const setVal = i => { if (i < 0 || i >= n) return; const prev = state.answers[q.label]; const next_v = (q.min || 1) + i; if (prev !== next_v) vibrate(20); state.answers[q.label] = next_v; items.forEach((it, j) => it.classList.toggle('sel', j === i)); const w = cont.offsetWidth / n; ind.style.left = (i * w + 4) + 'px'; ind.style.width = (w - 8) + 'px'; ind.style.opacity = '1'; };
   const hitIdx = x => { const rect = cont.getBoundingClientRect(); return clamp(Math.floor((x - rect.left) / (rect.width / n)), 0, n - 1); };
   const onStart = x => { setVal(hitIdx(x)); state.onDragX = cx => setVal(hitIdx(cx)); state.onDragDone = () => { state.onDragX = state.onDragDone = null; }; };
   cont.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
@@ -120,7 +122,7 @@ export function buildTap(q, qi) {
 export function buildMulti(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); s.classList.add('scrollable'); state.answers[q.label] = [];
   const grid = el('div', 'multi-grid');
-  q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { chip.classList.toggle('sel'); const arr = state.answers[q.label]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
+  q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { vibrate(20); chip.classList.toggle('sel'); const arr = state.answers[q.label]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
   s.appendChild(grid); s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
   const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
   s.append(memoBtn, memoOverlay, memoSheet);
@@ -146,7 +148,7 @@ export function buildBurst(q, qi) {
     else fg().style.strokeDashoffset = 0;
   };
   const doTap = () => {
-    if (count >= maxTaps) return; count++; state.answers[q.label] = count; disp.textContent = count;
+    if (count >= maxTaps) return; vibrate(15); count++; state.answers[q.label] = count; disp.textContent = count;
     btn.classList.remove('burst-pop'); void btn.offsetWidth; btn.classList.add('burst-pop');
     const p = el('div', 'burst-particle', ['✨','⭐','💥','🎉'][count % 4]);
     const angle = Math.random() * 2 * Math.PI; const dist = 60 + Math.random() * 40;
@@ -462,6 +464,8 @@ export async function sendAndDone() {
     .catch(e => console.warn('POST failed:', e));
   setTimeout(() => {
     state._submitted = true;
+    Object.keys(state.answers).filter(k => k.startsWith('[メモ] ')).forEach(k => delete state.answers[k]);
+    populateDone();
     window.markDoneToday?.(state.activeNotebookId);
     if (iconEl) iconEl.textContent = '🎉';
     if (titleEl) titleEl.textContent = '記録しました ✓';
