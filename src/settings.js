@@ -75,7 +75,7 @@ export async function confirmAddNotebook() {
   if (!name) return;
   const freq = document.getElementById('eq-nb-freq-select').value;
   const id = 'nb_' + Date.now().toString(36);
-  state.notebooks.push({ id, name, sheetName: name, frequency: freq, order: state.notebooks.length, questions: [] });
+  state.notebooks.push({ id, name, frequency: freq, order: state.notebooks.length, questions: [] });
   cancelAddNotebook();
   await saveNotebooksToGAS();
   renderSettingsNotebooks();
