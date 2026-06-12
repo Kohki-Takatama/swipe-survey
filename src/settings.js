@@ -49,9 +49,11 @@ export function renderSettingsNotebooks() {
     const row = el('div', 'settings-nb-row');
     const nameEl = el('div', 'settings-nb-name', nb.name);
     const freqEl = el('div', 'settings-nb-freq', nb.frequency === 'daily' ? '毎日' : '随時');
+    const renameBtn = el('button', 'settings-nb-del', '変更');
+    renameBtn.onclick = () => startRenameNotebook(nb.id, row);
     const delBtn = el('button', 'settings-nb-del', '削除');
     delBtn.onclick = () => deleteNotebook(nb.id);
-    row.append(nameEl, freqEl, delBtn);
+    row.append(nameEl, freqEl, renameBtn, delBtn);
     list.appendChild(row);
   });
 }
@@ -91,6 +93,29 @@ export async function deleteNotebook(id) {
   }
   await saveNotebooksToGAS();
   renderSettingsNotebooks();
+}
+
+function startRenameNotebook(id, row) {
+  const nb = state.notebooks.find(n => n.id === id);
+  if (!nb) return;
+  row.innerHTML = '';
+  const input = document.createElement('input');
+  input.className = 'form-input'; input.value = nb.name; input.style.cssText = 'flex:1;min-width:0;';
+  const saveBtn = el('button', 'settings-edit-btn', '保存');
+  saveBtn.onclick = async () => {
+    const newName = input.value.trim();
+    if (!newName) return;
+    nb.name = newName;
+    await saveNotebooksToGAS();
+    renderSettingsNotebooks();
+    const opt = document.querySelector(`#eq-nb-select option[value="${id}"]`);
+    if (opt) opt.textContent = newName;
+  };
+  const cancelBtn = el('button', 'settings-edit-btn', 'キャンセル');
+  cancelBtn.style.cssText = 'border-color:var(--sub);color:var(--sub);flex-shrink:0;';
+  cancelBtn.onclick = () => renderSettingsNotebooks();
+  row.append(input, saveBtn, cancelBtn);
+  input.focus(); input.select();
 }
 
 async function saveNotebooksToGAS() {
