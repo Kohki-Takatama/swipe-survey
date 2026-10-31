@@ -5,6 +5,9 @@
 毎日の体調・習慣を記録するチェックインアプリ。
 スマホブラウザで使用する単一HTML SPA + GAS バックエンド。
 
+保存先は従来のスプシ（既定）と非公開GitHubに対応する。切替手順は
+[GitHub保存への切替](github-storage.md)を参照。体重グラフはGitHubに保存した実測値から表示する。
+
 ## ファイル構成
 
 ```
@@ -18,8 +21,13 @@
 │   ├── builders.js     # 全設問ビルダー・画面生成
 │   ├── cloud.js        # GAS通信・設問キャッシュ
 │   ├── editor.js       # 設問編集フォーム
-│   └── settings.js     # 設定タブ
-├── gas-doPost.gs       # GAS バックエンド
+│   ├── settings.js     # 設定タブ
+│   ├── model.js        # 固定ID・回答・体重集計（GASと共用）
+│   ├── api.js          # 認証・応答確認を含む通信
+│   ├── submissions.js  # 未確認回答の保持・同一ID再送
+│   └── history.js      # 体重グラフ・数値一覧
+├── gas/backend.js     # GAS バックエンドの編集元
+├── gas-doPost.gs       # 生成済みGAS。build:gasで更新してGASへ貼り付ける
 ├── netlify.toml        # Netlify PR プレビュー設定
 └── docs/
     ├── spec.md         # 本ファイル（アプリ仕様）
@@ -57,7 +65,7 @@
 {
   GAS_URL: string,          // GAS Web App URL（localStorage に永続化）
   QUESTIONS: Question[],    // 現在の設問リスト
-  answers: Record<string, any>,  // 各設問の回答（key = q.label）
+  answers: Record<string, any>,  // 各設問の回答（key = q.id）
   curIdx: number,           // 現在表示中の設問インデックス
   _submitted: boolean,      // 送信済みフラグ
   editQuestions: Question[],  // 編集中の設問リスト
@@ -70,8 +78,10 @@
 
 ```javascript
 {
+  id: string,        // 文言・順序変更でも維持する固定ID
+  metric?: string,   // 体重グラフ対象は "weight"
   type: string,      // 設問タイプ（swipe/dial/tap/multi/burst/body/head）
-  label: string,     // 設問ラベル（回答キーにも使用）
+  label: string,     // 表示文言（回答キーには使用しない）
   choices?: string[], // 選択肢（tap/multi）
   min?: number,      // 最小値（dial）
   max?: number,      // 最大値（dial）
@@ -83,18 +93,37 @@
 
 ### answers オブジェクト
 
-- 通常回答: `answers[q.label] = value`
-- メモ: `answers['[メモ] ' + q.label] = string`
+- 通常回答: `answers[q.id] = value`
+- メモ: `answers['__memo__' + q.id] = string`
+- 送信時にID・文言・タイプ・値・メモを持つ `entries` に変換。旧GAS互換用のラベルキーも併送する。
+- 同じ文言のbody/head設問もIDで区別する。
 
 ## GAS API
 
-### エンドポイント
+### 従来のスプシ用エンドポイント
 
 | メソッド | パラメータ | 説明 |
 |---|---|---|
 | `GET` | `?action=config` | 設問リストを取得（スプレッドシートの config シートから） |
 | `POST` | `{ type: 'answer', answers, timestamp }` | 回答を記録（checkin シート） |
 | `POST` | `{ type: 'config', config: { questions }, secret? }` | 設問リストを保存 |
+
+### GitHub保存時のエンドポイント
+
+全て同じGAS URLへの `POST`、Content-Typeは `text/plain;charset=utf-8`。`secret` にアクセスキーを付ける。
+GitHubトークンはブラウザに渡さずGASのスクリプトプロパティから読む。
+
+| type / action | 追加フィールド | 結果 |
+| --- | --- | --- |
+| `read` / `config` | なし | `config`, GitHub blob SHAの `revision` |
+| `config` | `config`, `expectedRevision` | 競合がなければ新しい `revision` と設問を返す |
+| `answer` | `submissionId`, ISOの `timestamp`, `notebookId`, `notebookName`, `configRevision`, `entries` | 同一IDの重複を防ぎ、`saved: true` と `submissionId` を返す |
+| `read` / `last-answer` | なし | 全ノートブックの最終回答日時 |
+| `read` / `weight` | `days`（30/90/365） | 実測・7日/14日/30日移動平均の `points` |
+
+失敗は `status: "error"`, `code`, `message`。HTTP成功だけでは保存成功と判断しない。
+GitHub保存時のGETは接続状態の応答だけを許可し、設問・記録は返さない。
+回答の保存確認まで送信スナップショットを端末に保持し、再読込後も一覧から再送できる。
 
 ### スプレッドシート構成
 

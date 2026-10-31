@@ -2,27 +2,29 @@
 import { state } from './state.js';
 import { buildAll } from './builders.js';
 import { goTo } from './navigation.js';
+import { scopedKey } from './api.js';
+import { jstDate } from './model.js';
+import { pendingSubmission, sendPendingSubmission } from './submissions.js';
 
 function getToday() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return jstDate(new Date());
 }
 
 function isDoneToday(notebookId) {
   try {
-    const doneDates = JSON.parse(localStorage.getItem(state.NB_DONE_KEY) || '{}');
+    const doneDates = JSON.parse(localStorage.getItem(scopedKey('done_dates')) || '{}');
     return doneDates[notebookId] === getToday();
   } catch(e) { return false; }
 }
 
-export function markDoneToday(notebookId) {
+export function markDoneToday(notebookId, timestamp = new Date().toISOString()) {
   if (!notebookId) return;
   const nb = state.notebooks.find(n => n.id === notebookId);
   if (!nb || nb.frequency !== 'daily') return;
   try {
-    const doneDates = JSON.parse(localStorage.getItem(state.NB_DONE_KEY) || '{}');
-    doneDates[notebookId] = getToday();
-    localStorage.setItem(state.NB_DONE_KEY, JSON.stringify(doneDates));
+    const doneDates = JSON.parse(localStorage.getItem(scopedKey('done_dates')) || '{}');
+    doneDates[notebookId] = jstDate(timestamp);
+    localStorage.setItem(scopedKey('done_dates'), JSON.stringify(doneDates));
   } catch(e) {}
 }
 
@@ -34,6 +36,24 @@ export function renderNotebookList() {
   header.className = 'nb-header';
   header.innerHTML = '<div class="nb-title">Daily Check-in</div><div class="nb-subtitle">ノートブックを選択</div>';
   container.appendChild(header);
+
+  const pending = pendingSubmission();
+  if (pending) {
+    const notice = document.createElement('div'); notice.className = 'pending-notice';
+    const message = document.createElement('p'); message.textContent = `${pending.notebookName}：保存未確認の記録があります。`;
+    message.setAttribute('role', 'status');
+    const retry = document.createElement('button'); retry.className = 'settings-edit-btn'; retry.textContent = '同じ回答を再送';
+    retry.onclick = async () => {
+      if (state._submitting) return;
+      state._submitting = true; retry.disabled = true; message.textContent = '保存を確認中…';
+      try {
+        const saved = await sendPendingSubmission(); markDoneToday(saved.notebookId, saved.timestamp);
+        state._submitted = true; state.answers = {}; renderNotebookList();
+      } catch(e) { message.textContent = e.message; retry.disabled = false; }
+      finally { state._submitting = false; }
+    };
+    notice.append(message, retry); container.appendChild(notice);
+  }
 
   state.notebooks.forEach(nb => {
     const done = nb.frequency === 'daily' && isDoneToday(nb.id);
@@ -81,9 +101,12 @@ export function hideNotebookList() {
 }
 
 export function startNotebook(id) {
+  if (state._submitting) return;
+  if (pendingSubmission()) { alert('先に一覧の「同じ回答を再送」で保存を確認してください'); return; }
   state.activeNotebookId = id;
   const nb = state.notebooks.find(n => n.id === id);
   if (!nb) return;
+  state.answers = {};
   state.QUESTIONS.length = 0;
   nb.questions.forEach(q => state.QUESTIONS.push(q));
   hideNotebookList();

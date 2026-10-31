@@ -1,0 +1,11 @@
+{
+  "name": "swipe-survey",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:gas": "node scripts/build-gas.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:browser": "node test/browser.mjs",
+    "check": "node scripts/check.mjs"
+  }
+}

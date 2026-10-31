@@ -1,7 +1,9 @@
 // src/editor.js
 import { state } from './state.js';
 import { el } from './utils.js';
-import { initCloud } from './cloud.js';
+import { initCloud, fetchAndCache } from './cloud.js';
+import { apiWrite, scopedKey } from './api.js';
+import { newId, normalizeConfig } from './model.js';
 
 export const EQ_TYPE_PARAMS = {
   swipe: () => '',
@@ -90,20 +92,13 @@ export async function loadEditQuestions() {
   loadingEl.classList.remove('hidden');
   contentEl.style.visibility = 'hidden';
   try {
-    const sep = state.GAS_URL.includes('?') ? '&' : '?';
-    const res = await fetch(state.GAS_URL + sep + 'action=config');
-    const data = await res.json();
-    const cfg = data.config || {};
-    // notebooks 形式と旧 questions 形式の両方に対応
-    if (Array.isArray(cfg.notebooks) && cfg.notebooks.length > 0) {
-      state.notebooks = cfg.notebooks;
-    } else if (Array.isArray(cfg.questions) && cfg.questions.length > 0) {
-      if (state.notebooks.length === 0) {
-        state.notebooks = [{ id: 'nb_default', name: 'チェックイン', frequency: 'daily', order: 0, questions: cfg.questions }];
-      }
-    }
+    const { notebooks, revision } = await fetchAndCache();
+    state.notebooks = notebooks; state.configRevision = revision;
+    document.getElementById('eq-save-error').textContent = '';
+    document.getElementById('eq-save-btn').disabled = false;
   } catch(e) {
-    // fetch 失敗時はキャッシュ済みの state.notebooks をそのまま使う
+    document.getElementById('eq-save-error').textContent = '設問を再取得できませんでした。接続を確認して設問タブを開き直してください。';
+    document.getElementById('eq-save-btn').disabled = true;
   }
   loadingEl.classList.add('hidden');
   contentEl.style.visibility = '';
@@ -218,7 +213,9 @@ export function renderEditTypeParams() {
 export function confirmEditForm() {
   const label = document.getElementById('eq-label').value.trim();
   if (!label) { alert('ラベルを入力してください'); return; }
-  let q = { type: state.editSelectedType, label };
+  const previous = state.editingIdx !== null ? state.editQuestions[state.editingIdx] : null;
+  let q = { id: previous?.id || newId(), type: state.editSelectedType, label,
+    ...(previous?.metric ? { metric: previous.metric } : {}) };
   if (state.editSelectedType === 'dial') {
     const min = parseFloat(document.getElementById('ep-min').value);
     const max = parseFloat(document.getElementById('ep-max').value);
@@ -255,34 +252,31 @@ export function confirmEditForm() {
 }
 
 export async function saveQuestions() {
+  if (state._configSaving) return;
   if (!state.GAS_URL) { alert('GAS URL が設定されていません'); return; }
   const btn = document.getElementById('eq-save-btn');
   btn.disabled = true;
+  state._configSaving = true;
   btn.textContent = '保存中...';
   try {
-    // 選択中ノートブックに editQuestions をマージしてから全体を保存
-    const targetNb = state.notebooks.find(n => n.id === state.editNotebookId);
-    if (targetNb) targetNb.questions = state.editQuestions;
-    const payload = { type: 'config', config: { notebooks: state.notebooks } };
-    const res = await fetch(state.GAS_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json();
-    if (data.status !== 'ok') throw new Error(data.message || 'save error');
+    const config = normalizeConfig({ notebooks: state.notebooks.map(n => n.id === state.editNotebookId ? { ...n, questions: state.editQuestions } : n) });
+    const data = await apiWrite({ type: 'config', config, expectedRevision: state.configRevision });
+    state.notebooks = (data.config || config).notebooks;
+    state.configRevision = data.revision ?? data.version;
+    document.getElementById('eq-save-error').textContent = '';
     btn.textContent = '保存しました ✓';
-    try { localStorage.removeItem(state.QC_KEY); } catch(e) {}
+    try { localStorage.removeItem(scopedKey('questions')); } catch(e) {}
     state.QUESTIONS.length = 0;
     state._saveTabTimer = setTimeout(() => {
       btn.disabled = false;
-      btn.textContent = 'GASに保存する';
+      btn.textContent = '設問を保存';
       initCloud();
       window.switchTab('answer');
     }, 800);
   } catch(e) {
-    alert('保存に失敗しました: ' + e.message);
+    document.getElementById('eq-save-error').textContent = e.message;
     btn.disabled = false;
-    btn.textContent = 'GASに保存する';
+    btn.textContent = '設問を保存';
   }
+  finally { state._configSaving = false; }
 }

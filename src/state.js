@@ -1,6 +1,10 @@
 // src/state.js
 export const state = {
   GAS_URL: '',
+  ACCESS_KEY: '',
+  storageBackend: 'spreadsheet',
+  configRevision: null,
+  _submitting: false,
   QUESTIONS: [],
   answers: {},
   curIdx: 0,
@@ -11,6 +15,7 @@ export const state = {
   onDragDone: null,
   QC_KEY: 'daily_checkin.questions_cache',
   GAS_URL_KEY: 'daily_checkin.gas_url',
+  ACCESS_KEY_KEY: 'daily_checkin.access_key',
   NB_DONE_KEY: 'daily_checkin.done_dates',
   _pendingNotebooks: null,
   notebooks: [],
@@ -22,3 +27,4 @@ export const state = {
   _saveTabTimer: null,
 };
 try { state.GAS_URL = localStorage.getItem(state.GAS_URL_KEY) || ''; } catch(e) {}
+try { state.ACCESS_KEY = localStorage.getItem(state.ACCESS_KEY_KEY) || ''; } catch(e) {}

@@ -2,6 +2,8 @@
 import { state } from './state.js';
 import { el, clamp, dialDec, idxToOff, offToIdx, ITEM_H, DRUM_CY, PAD } from './utils.js';
 import { goTo, setProgress } from './navigation.js';
+import { questionKey, memoKey } from './model.js';
+import { pendingSubmission, prepareSubmission, sendPendingSubmission } from './submissions.js';
 
 export function makeScreen(q, qi) {
   const s = el('div', 'screen');
@@ -18,13 +20,13 @@ export function buildMemo(q, cancelAutoFn) {
   input.className = 'memo-sheet-input'; input.placeholder = '書き残したいこと...'; input.rows = 3;
   const closeBtn = el('button', 'memo-sheet-close', '完了');
   sheet.append(input, closeBtn);
-  const updateBtn = () => btn.classList.toggle('has-memo', !!(state.answers['[メモ] ' + q.label]));
+  const updateBtn = () => btn.classList.toggle('has-memo', !!(state.answers[memoKey(q)]));
   const openSheet = () => { sheet.classList.add('open'); overlay.classList.add('open'); cancelAutoFn?.(); input.focus(); };
   const closeSheet = () => { sheet.classList.remove('open'); overlay.classList.remove('open'); document.activeElement?.blur(); };
   btn.onclick = () => sheet.classList.contains('open') ? closeSheet() : openSheet();
   input.addEventListener('input', () => {
     const v = input.value.trim();
-    if (v) state.answers['[メモ] ' + q.label] = v; else delete state.answers['[メモ] ' + q.label];
+    if (v) state.answers[memoKey(q)] = v; else delete state.answers[memoKey(q)];
     updateBtn();
   });
   closeBtn.onclick = closeSheet;
@@ -50,8 +52,8 @@ export function buildSwipe(q, qi) {
     if (!active) return; active = false; state.onDragX = state.onDragDone = null;
     card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
     const doNext = () => { if (memoSheet.classList.contains('open')) { autoTimer = setTimeout(doNext, 500); return; } next(); };
-    if (ox > THRESH) { state.answers[q.label] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; autoTimer = setTimeout(doNext, 370); }
-    else if (ox < -THRESH) { state.answers[q.label] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; autoTimer = setTimeout(doNext, 370); }
+    if (ox > THRESH) { state.answers[questionKey(q)] = 'はい'; card.style.transform = 'translateX(600px) rotate(28deg)'; autoTimer = setTimeout(doNext, 370); }
+    else if (ox < -THRESH) { state.answers[questionKey(q)] = 'いいえ'; card.style.transform = 'translateX(-600px) rotate(-28deg)'; autoTimer = setTimeout(doNext, 370); }
     else { card.style.transform = ''; badgeY.style.opacity = badgeN.style.opacity = 0; emoji.textContent = '🤔'; }
   };
   card.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
@@ -89,11 +91,14 @@ export function buildDial(q, qi) {
   }
   if (q.dial2) {
     const cfg2 = { step: 1, ...q.dial2 }; const sep = q.separator !== undefined ? q.separator : '.';
-    let d1, d2; const updateAnswer = () => { state.answers[q.label] = d1.fmtVal() + (q.unit || '') + sep + d2.fmtVal() + (cfg2.unit || ''); };
+    let d1, d2; const updateAnswer = () => {
+      state.answers[questionKey(q)] = q.metric === 'weight' && sep === '.' ?
+        Number(d1.fmtVal() + '.' + d2.fmtVal()) : d1.fmtVal() + (q.unit || '') + sep + d2.fmtVal() + (cfg2.unit || '');
+    };
     d1 = createDrum(q, true, updateAnswer); d2 = createDrum(cfg2, true, updateAnswer); updateAnswer();
     const row = el('div', 'dial-row'); row.appendChild(d1.col); if (sep) row.appendChild(el('div', 'dial-sep', sep)); row.appendChild(d2.col); s.appendChild(row);
   } else {
-    let d; const updateAnswer = () => { state.answers[q.label] = d.numVal(); }; d = createDrum(q, false, updateAnswer); updateAnswer(); s.appendChild(d.col);
+    let d; const updateAnswer = () => { state.answers[questionKey(q)] = d.numVal(); }; d = createDrum(q, false, updateAnswer); updateAnswer(); s.appendChild(d.col);
   }
   const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
   s.append(memoBtn, memoOverlay, memoSheet);
@@ -101,12 +106,12 @@ export function buildDial(q, qi) {
 }
 
 export function buildTap(q, qi) {
-  const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); state.answers[q.label] = null;
+  const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); state.answers[questionKey(q)] = null;
   const n = (q.max || 5) - (q.min || 1) + 1;
   const cont = el('div', 'scrub-container'); const ind = el('div', 'scrub-indicator'); const row = el('div', 'scrub-items');
   cont.appendChild(ind); cont.appendChild(row); const items = [];
   for (let i = 0; i < n; i++) { const it = el('div', 'scrub-item', String((q.min || 1) + i)); row.appendChild(it); items.push(it); }
-  const setVal = i => { if (i < 0 || i >= n) return; state.answers[q.label] = (q.min || 1) + i; items.forEach((it, j) => it.classList.toggle('sel', j === i)); const w = cont.offsetWidth / n; ind.style.left = (i * w + 4) + 'px'; ind.style.width = (w - 8) + 'px'; ind.style.opacity = '1'; };
+  const setVal = i => { if (i < 0 || i >= n) return; state.answers[questionKey(q)] = (q.min || 1) + i; items.forEach((it, j) => it.classList.toggle('sel', j === i)); const w = cont.offsetWidth / n; ind.style.left = (i * w + 4) + 'px'; ind.style.width = (w - 8) + 'px'; ind.style.opacity = '1'; };
   const hitIdx = x => { const rect = cont.getBoundingClientRect(); return clamp(Math.floor((x - rect.left) / (rect.width / n)), 0, n - 1); };
   const onStart = x => { setVal(hitIdx(x)); state.onDragX = cx => setVal(hitIdx(cx)); state.onDragDone = () => { state.onDragX = state.onDragDone = null; }; };
   cont.addEventListener('mousedown', e => { e.preventDefault(); onStart(e.clientX); });
@@ -114,13 +119,13 @@ export function buildTap(q, qi) {
   s.appendChild(cont);
   const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
   s.append(memoBtn, memoOverlay, memoSheet);
-  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ'); btn.onclick = () => { if (state.answers[q.label] == null) { cont.classList.remove('shake'); void cont.offsetWidth; cont.classList.add('shake'); return; } if (isLast) goToDone(); else next(); }; s.appendChild(btn); return s;
+  const btn = el('button', 'act-btn', isLast ? '確認する' : '次へ'); btn.onclick = () => { if (state.answers[questionKey(q)] == null) { cont.classList.remove('shake'); void cont.offsetWidth; cont.classList.add('shake'); return; } if (isLast) goToDone(); else next(); }; s.appendChild(btn); return s;
 }
 
 export function buildMulti(q, qi) {
-  const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); s.classList.add('scrollable'); state.answers[q.label] = [];
+  const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi); s.classList.add('scrollable'); state.answers[questionKey(q)] = [];
   const grid = el('div', 'multi-grid');
-  q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { chip.classList.toggle('sel'); const arr = state.answers[q.label]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
+  q.options.forEach(opt => { const chip = el('button', 'multi-chip', opt); chip.onclick = () => { chip.classList.toggle('sel'); const arr = state.answers[questionKey(q)]; const idx = arr.indexOf(opt); if (idx >= 0) arr.splice(idx, 1); else arr.push(opt); }; grid.appendChild(chip); });
   s.appendChild(grid); s.appendChild(el('div', 'multi-note', '選ばなくてもOK'));
   const { btn: memoBtn, overlay: memoOverlay, sheet: memoSheet } = buildMemo(q);
   s.append(memoBtn, memoOverlay, memoSheet);
@@ -129,7 +134,7 @@ export function buildMulti(q, qi) {
 
 export function buildBurst(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1; const s = makeScreen(q, qi);
-  const maxTaps = q.max || 10; let count = 0, timer = null; state.answers[q.label] = 0;
+  const maxTaps = q.max || 10; let count = 0, timer = null; state.answers[questionKey(q)] = 0;
   const area = el('div', 'burst-area'); const disp = el('div', 'burst-count-disp', '0'); const lbl = el('div', 'burst-max-lbl', '/ ' + maxTaps);
   const wrap = el('div', 'burst-ring-wrap'); const R = 54, C = 2 * Math.PI * R;
   wrap.innerHTML = '<svg class="burst-ring-svg" viewBox="0 0 120 120"><circle class="burst-ring-bg" cx="60" cy="60" r="' + R + '"/><circle class="burst-ring-fg" id="burst-fg-' + qi + '" cx="60" cy="60" r="' + R + '" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/></svg>';
@@ -146,7 +151,7 @@ export function buildBurst(q, qi) {
     else fg().style.strokeDashoffset = 0;
   };
   const doTap = () => {
-    if (count >= maxTaps) return; count++; state.answers[q.label] = count; disp.textContent = count;
+    if (count >= maxTaps) return; count++; state.answers[questionKey(q)] = count; disp.textContent = count;
     btn.classList.remove('burst-pop'); void btn.offsetWidth; btn.classList.add('burst-pop');
     const p = el('div', 'burst-particle', ['✨','⭐','💥','🎉'][count % 4]);
     const angle = Math.random() * 2 * Math.PI; const dist = 60 + Math.random() * 40;
@@ -178,7 +183,7 @@ export function buildBody(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1;
   const s = makeScreen(q, qi);
   s.classList.add('scrollable');
-  state.answers[q.label] = [];
+  state.answers[questionKey(q)] = [];
 
   const wrap = el('div', 'body-map-wrap');
 
@@ -242,11 +247,11 @@ export function buildBody(q, qi) {
     svg.style.cssText = 'width:160px;height:295px;touch-action:manipulation;';
     zones.forEach(([id, name, tag, attrs]) => {
       const el2 = document.createElementNS(NS, tag);
-      el2.setAttribute('class', 'body-zone' + (state.answers[q.label].includes(name) ? ' sel' : ''));
+      el2.setAttribute('class', 'body-zone' + (state.answers[questionKey(q)].includes(name) ? ' sel' : ''));
       el2.setAttribute('data-name', name);
       Object.entries(attrs).forEach(([k, v]) => el2.setAttribute(k, v));
       el2.addEventListener('click', () => {
-        const arr = state.answers[q.label];
+        const arr = state.answers[questionKey(q)];
         const idx = arr.indexOf(name);
         if (idx >= 0) arr.splice(idx, 1); else arr.push(name);
         el2.classList.toggle('sel', idx < 0);
@@ -290,7 +295,7 @@ export function buildHead(q, qi) {
   const isLast = qi === state.QUESTIONS.length - 1;
   const s = makeScreen(q, qi);
   s.classList.add('scrollable');
-  state.answers[q.label] = [];
+  state.answers[questionKey(q)] = [];
 
   const wrap = el('div', 'body-map-wrap');
 
@@ -344,7 +349,7 @@ export function buildHead(q, qi) {
     zone.setAttribute('data-name', name);
     Object.entries(attrs).forEach(([k, v]) => zone.setAttribute(k, v));
     zone.addEventListener('click', () => {
-      const arr = state.answers[q.label];
+      const arr = state.answers[questionKey(q)];
       const idx = arr.indexOf(name);
       if (idx >= 0) arr.splice(idx, 1); else arr.push(name);
       zone.classList.toggle('sel', idx < 0);
@@ -382,7 +387,7 @@ export function buildAll() {
       '<button class="done-retry-btn" id="done-retry-btn">やり直す</button>' +
       '<button class="done-submit-btn" id="done-submit-btn">記録する</button>' +
     '</div>' +
-    '<div class="done-status" id="done-status"></div>' +
+    '<div class="done-status" id="done-status" role="status" aria-live="polite"></div>' +
     (state.notebooks.length > 0 ? '<button class="done-list-btn" id="done-list-btn">← 一覧に戻る</button>' : '') +
     '</div>';
   done.querySelector('#done-retry-btn').onclick = resetAll;
@@ -412,21 +417,21 @@ export function populateDone() {
   state.QUESTIONS.forEach(q => {
     const row = el('div', 'done-row');
     row.appendChild(el('span', 'done-key', q.label));
-    const v = state.answers[q.label];
+    const v = state.answers[questionKey(q)];
     const disp = v == null ? '—' : (Array.isArray(v) ? (v.length ? v.join(', ') : '—') : v) + (q.unit ? ' ' + q.unit : '');
     row.appendChild(el('span', 'done-val', disp));
-    const hasMemo = !!(state.answers['[メモ] ' + q.label]);
+    const hasMemo = !!(state.answers[memoKey(q)]);
     const memoIconBtn = el('button', 'done-memo-btn', '📝');
     memoIconBtn.style.opacity = hasMemo ? '1' : '0.3';
     const memoRow = el('div', 'done-memo-row');
     memoRow.style.display = 'none';
     const memoInput = document.createElement('textarea');
     memoInput.className = 'memo-sheet-input'; memoInput.rows = 2;
-    memoInput.value = state.answers['[メモ] ' + q.label] || '';
+    memoInput.value = state.answers[memoKey(q)] || '';
     memoInput.placeholder = '書き残したいこと...';
     memoInput.addEventListener('input', () => {
       const v2 = memoInput.value.trim();
-      if (v2) state.answers['[メモ] ' + q.label] = v2; else delete state.answers['[メモ] ' + q.label];
+      if (v2) state.answers[memoKey(q)] = v2; else delete state.answers[memoKey(q)];
       memoIconBtn.style.opacity = v2 ? '1' : '0.3';
     });
     memoRow.appendChild(memoInput);
@@ -440,6 +445,7 @@ export function populateDone() {
 }
 
 export function resetAll() {
+  if (state._submitting || pendingSubmission()) { alert('未確認の記録があります。先に同じ回答を再送してください'); return; }
   Object.keys(state.answers).forEach(k => delete state.answers[k]);
   state._submitted = false;
   buildAll();
@@ -451,24 +457,35 @@ export function next() { state.curIdx + 1 < state.QUESTIONS.length ? goTo(state.
 export function goToDone() { populateDone(); goTo(state.QUESTIONS.length); }
 
 export async function sendAndDone() {
+  if (state._submitting || state._submitted) return;
   const submitBtn = document.getElementById('done-submit-btn');
   const retryBtn = document.getElementById('done-retry-btn');
+  const listBtn = document.getElementById('done-list-btn');
   const statusEl = document.getElementById('done-status');
-  const iconEl = document.getElementById('done-icon');
-  const titleEl = document.getElementById('done-title');
-  if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = '送信中...'; }
-  const activeNb = state.notebooks.find(nb => nb.id === state.activeNotebookId);
-  const payload = { type: 'answer', timestamp: new Date().toLocaleString('ja-JP'), answers: state.answers, notebookName: activeNb ? activeNb.name : null };
-  fetch(state.GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(payload) })
-    .catch(e => console.warn('POST failed:', e));
-  setTimeout(() => {
+  try {
+    prepareSubmission();
+    state._submitting = true;
+    // A retry always sends the stored snapshot, including its original timestamp and ID.
+    document.querySelectorAll('#done-answers textarea, #done-answers button').forEach(e => e.disabled = true);
+    submitBtn.disabled = true; submitBtn.textContent = '保存を確認中…';
+    if (retryBtn) retryBtn.disabled = true;
+    if (listBtn) listBtn.disabled = true;
+    statusEl.textContent = ''; statusEl.style.color = 'var(--green)';
+    const saved = await sendPendingSubmission();
     state._submitted = true;
-    window.markDoneToday?.(state.activeNotebookId);
-    if (iconEl) iconEl.textContent = '🎉';
-    if (titleEl) titleEl.textContent = '記録しました ✓';
-    if (statusEl) { statusEl.textContent = ''; }
-    if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = '再送する'; submitBtn.style.background = 'var(--sub)'; submitBtn.style.boxShadow = 'none'; }
-    if (retryBtn) retryBtn.textContent = '最初に戻る';
+    window.markDoneToday?.(saved.notebookId, saved.timestamp);
+    document.getElementById('done-icon').textContent = '🎉';
+    document.getElementById('done-title').textContent = '記録しました ✓';
+    submitBtn.textContent = '記録済み';
+    if (retryBtn) retryBtn.textContent = 'もう一度回答する';
     window.removeEventListener('beforeunload', state._beforeUnloadHandler);
-  }, 1500);
+  } catch (e) {
+    statusEl.style.color = '#c62828';
+    statusEl.textContent = e.message + '。回答は保持しています。';
+    submitBtn.disabled = false; submitBtn.textContent = '同じ回答を再送';
+  } finally {
+    state._submitting = false;
+    if (retryBtn) retryBtn.disabled = false;
+    if (listBtn) listBtn.disabled = false;
+  }
 }

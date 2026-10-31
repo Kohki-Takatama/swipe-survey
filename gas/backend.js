@@ -1,0 +1,304 @@
+// Google Apps Script V8. Runtime secrets belong in Script Properties, never in this repository.
+const SHEET_CHECKIN = 'checkin';
+const SHEET_CONFIG = 'config';
+
+function appError(code, message) { const e = new Error(message); e.code = code; return e; }
+function backendMode() { return PropertiesService.getScriptProperties().getProperty('STORAGE_BACKEND') || 'spreadsheet'; }
+function jsonReply(data) {
+  return ContentService.createTextOutput(JSON.stringify(data)).setMimeType(ContentService.MimeType.JSON);
+}
+function handleRequest(fn) {
+  try { return jsonReply({ status: 'ok', storageBackend: backendMode(), ...fn() }); }
+  catch (e) { return jsonReply({ status: 'error', code: e.code || 'invalid_request', message: e.message }); }
+}
+function requireAccess(payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty('CHECKIN_SECRET');
+  if (!expected || expected.length < 24) throw appError('setup_required', 'GASのCHECKIN_SECRETを24文字以上で設定してください');
+  const supplied = typeof payload.secret === 'string' ? payload.secret : '';
+  let diff = expected.length ^ supplied.length;
+  for (let i = 0; i < expected.length; i++) diff |= expected.charCodeAt(i) ^ (supplied.charCodeAt(i) || 0);
+  if (diff !== 0) throw appError('unauthorized', 'アクセスキーを確認してください');
+}
+function locked(fn) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try { return fn(); } finally { lock.releaseLock(); }
+}
+
+function doGet(e) {
+  return handleRequest(() => {
+    const action = e && e.parameter && e.parameter.action;
+    if (!action) return { message: 'Daily Check-in GAS is running.' };
+    if (backendMode() === 'github') throw appError('unauthorized', 'アクセスキーを設定して接続してください');
+    if (backendMode() !== 'spreadsheet') throw appError('setup_required', 'STORAGE_BACKENDの設定が不正です');
+    if (action === 'config') return getSheetConfig();
+    if (action === 'last-answer') return getSheetLastAnswer();
+    throw appError('unsupported', 'この取得方法には対応していません');
+  });
+}
+function doPost(e) {
+  return handleRequest(() => {
+    const text = e && e.postData && e.postData.contents;
+    if (!text || text.length > 900000) throw appError('invalid_request', '送信データが不正、または大きすぎます');
+    const payload = JSON.parse(text);
+    if (backendMode() === 'github') {
+      requireAccess(payload);
+      const options = githubOptions();
+      if (payload.type === 'read') return readGithub(payload, options);
+      if (payload.type === 'config') return locked(() => saveGithubConfig(payload, options));
+      if (payload.type === 'answer') return locked(() => saveGithubAnswer(payload, options));
+      throw appError('invalid_request', '送信種別が不正です');
+    }
+    if (backendMode() !== 'spreadsheet') throw appError('setup_required', 'STORAGE_BACKENDの設定が不正です');
+    if (payload.type === 'read') {
+      requireAccess(payload);
+      if (payload.action === 'config') return getSheetConfig();
+      if (payload.action === 'last-answer') return getSheetLastAnswer();
+      throw appError('unsupported', 'グラフはGitHub保存への切替後に利用できます');
+    }
+    if (payload.type === 'config') return locked(() => saveSheetConfig(payload));
+    if (payload.type === 'answer' || !payload.type) return locked(() => saveSheetAnswer(payload));
+    throw appError('invalid_request', '送信種別が不正です');
+  });
+}
+
+function githubOptions() {
+  const p = PropertiesService.getScriptProperties();
+  const options = {
+    token: p.getProperty('GITHUB_TOKEN'), repository: p.getProperty('GITHUB_REPOSITORY'),
+    branch: p.getProperty('GITHUB_BRANCH') || 'main',
+    root: p.getProperty('GITHUB_DATA_PATH') || 'checkin/swipe-survey'
+  };
+  if (!options.token || !/^[\w.-]+\/[\w.-]+$/.test(options.repository || '') ||
+      !/^[\w./-]+$/.test(options.root) || options.root.split('/').some(s => !s || s === '.' || s === '..')) {
+    throw appError('setup_required', 'GASのGitHub接続設定を確認してください');
+  }
+  const repository = githubRequest(options, '', 'get');
+  if (!repository.private) throw appError('private_repository_required', '記録先には非公開リポジトリを指定してください');
+  return options;
+}
+function githubRequest(options, path, method, payload, allowMissing) {
+  const response = UrlFetchApp.fetch('https://api.github.com/repos/' + options.repository + path, {
+    method, muteHttpExceptions: true,
+    headers: { Authorization: 'Bearer ' + options.token, Accept: 'application/vnd.github+json',
+      'X-GitHub-Api-Version': '2022-11-28' },
+    ...(payload ? { contentType: 'application/json', payload: JSON.stringify(payload) } : {})
+  });
+  const code = response.getResponseCode();
+  if (code === 404 && allowMissing) return null;
+  if (code === 409 || code === 422) throw appError('conflict', 'GitHub上で変更が競合しました。再読込して確認してください');
+  if (code < 200 || code >= 300) throw appError('github_error', 'GitHubとの通信に失敗しました（HTTP ' + code + '）');
+  return JSON.parse(response.getContentText());
+}
+function contentPath(options, path) {
+  return '/contents/' + (options.root + '/' + path).split('/').map(encodeURIComponent).join('/');
+}
+function getGithubFile(options, path) {
+  const file = githubRequest(options, contentPath(options, path) + '?ref=' + encodeURIComponent(options.branch), 'get', null, true);
+  if (!file) return null;
+  if (!file.content || file.encoding !== 'base64') throw appError('invalid_data', '保存ファイルを読み込めませんでした');
+  return { sha: file.sha, data: JSON.parse(Utilities.newBlob(Utilities.base64Decode(file.content)).getDataAsString('UTF-8')) };
+}
+function putGithubFile(options, path, data, sha, message) {
+  const text = JSON.stringify(data, null, 2) + '\n';
+  if (Utilities.newBlob(text).getBytes().length > 900000) throw appError('file_too_large', '記録ファイルが大きすぎます。保存構成を見直してください');
+  const result = githubRequest(options, contentPath(options, path), 'put', {
+    branch: options.branch, message: message || 'Record daily check-in',
+    content: Utilities.base64Encode(text, Utilities.Charset.UTF_8), ...(sha ? { sha } : {})
+  });
+  return result.content.sha;
+}
+function getGithubConfig(options) {
+  const file = getGithubFile(options, 'config.json');
+  if (!file) throw appError('setup_required', '先にGASのmigrateSpreadsheetToGitHubを実行してください');
+  return { config: normalizeConfig(file.data), revision: file.sha };
+}
+function saveGithubConfig(payload, options) {
+  const current = getGithubFile(options, 'config.json');
+  if (!current || payload.expectedRevision !== current.sha) throw appError('conflict', '設問が別の場所で変更されています。再読込してから編集してください');
+  const config = normalizeConfig(payload.config);
+  config.version = (Number(current.data.version) || 0) + 1;
+  config.updatedAt = new Date().toISOString();
+  const revision = putGithubFile(options, 'config.json', config, current.sha, 'Update check-in questions');
+  return { revision, config, version: config.version, updatedAt: config.updatedAt };
+}
+function readGithub(payload, options) {
+  if (payload.action === 'config') return getGithubConfig(options);
+  if (payload.action === 'weight') return getGithubWeights(payload, options);
+  if (payload.action === 'last-answer') {
+    const months = recordMonths(options).sort().reverse();
+    for (const month of months) {
+      const records = monthlyRecords(getGithubFile(options, 'records/' + month + '.json'));
+      if (records.length) return { lastAnswer: records.reduce((latest, r) => r.timestamp > latest ? r.timestamp : latest, '') };
+    }
+    return { lastAnswer: null };
+  }
+  throw appError('unsupported', '取得種別が不正です');
+}
+function monthlyRecords(file) {
+  if (!file) return [];
+  if (!Array.isArray(file.data.records)) throw appError('invalid_data', '月別記録の形式が不正です');
+  return file.data.records;
+}
+function saveGithubAnswer(payload, options) {
+  const record = validateRecord(payload);
+  return appendRecords(options, record.date.slice(0, 7), [record]);
+}
+function appendRecords(options, month, additions) {
+  const path = 'records/' + month + '.json';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const current = getGithubFile(options, path), records = monthlyRecords(current);
+    let count = 0;
+    for (const record of additions) {
+      const existing = records.find(r => r.submissionId === record.submissionId);
+      if (existing) {
+        if (JSON.stringify(existing) !== JSON.stringify(record)) throw appError('id_reused', '同じ送信IDで異なる回答を保存できません');
+      } else { records.push(record); count++; }
+    }
+    if (!count) return { saved: true, duplicate: true, submissionId: additions[0].submissionId };
+    records.sort((a, b) => a.timestamp.localeCompare(b.timestamp) || a.submissionId.localeCompare(b.submissionId));
+    try {
+      const revision = putGithubFile(options, path, { schemaVersion: 1, records }, current && current.sha, 'Record check-in: ' + month);
+      return { saved: true, duplicate: false, submissionId: additions[0].submissionId, revision, added: count };
+    } catch (e) { if (e.code !== 'conflict' || attempt === 2) throw e; }
+  }
+}
+function recordMonths(options) {
+  const files = githubRequest(options, contentPath(options, 'records') + '?ref=' + encodeURIComponent(options.branch), 'get', null, true);
+  if (!files) return [];
+  if (!Array.isArray(files)) throw appError('invalid_data', '記録フォルダを読み込めません');
+  return files.filter(f => f.type === 'file' && /^\d{4}-\d{2}\.json$/.test(f.name)).map(f => f.name.slice(0, 7));
+}
+function getGithubWeights(payload, options) {
+  const days = Number(payload.days || 90);
+  if (![30, 90, 365].includes(days)) throw appError('invalid_request', '表示期間が不正です');
+  const today = jstDate(new Date()), end = Date.parse(today + 'T00:00:00Z');
+  const from = new Date(end - (days - 1) * 86400000).toISOString().slice(0, 10);
+  const warmup = new Date(end - (days + 28) * 86400000).toISOString().slice(0, 7);
+  let records = [];
+  for (const month of recordMonths(options).filter(m => m >= warmup && m <= today.slice(0, 7)).sort()) {
+    records = records.concat(monthlyRecords(getGithubFile(options, 'records/' + month + '.json')));
+  }
+  const archive = getGithubFile(options, 'weight-history.json');
+  return { points: weightSeries(records, archive ? archive.data.points : [], from, today),
+    throughDate: today, days, unit: 'kg' };
+}
+
+// Compatibility mode keeps an existing deployment usable until the GitHub setup is complete.
+function getSheetConfig() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEET_CONFIG);
+  if (!sheet || sheet.getLastRow() < 2) return { config: { notebooks: [], version: 0 } };
+  const row = sheet.getRange('A2:C2').getValues()[0];
+  return { config: { ...normalizeConfig(JSON.parse(row[0] || '{}')), version: row[2], updatedAt: row[1] }, revision: String(row[2] || 0) };
+}
+function getSheetLastAnswer() {
+  let latest = null;
+  SpreadsheetApp.getActiveSpreadsheet().getSheets().forEach(sheet => {
+    if (sheet.getLastRow() <= 1 || sheet.getRange(1, 1).getValue() !== 'timestamp') return;
+    const v = sheet.getRange(sheet.getLastRow(), 1).getValue();
+    const iso = sheetTimestamp(v);
+    if (!latest || iso > latest) latest = iso;
+  });
+  return { lastAnswer: latest };
+}
+function saveSheetConfig(payload) {
+  const properties = PropertiesService.getScriptProperties();
+  const secret = properties.getProperty('CHECKIN_SECRET') || properties.getProperty('CONFIG_SECRET');
+  if (secret && payload.secret !== secret) throw appError('unauthorized', 'アクセスキーを確認してください');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEET_CONFIG);
+  if (!sheet) { sheet = ss.insertSheet(SHEET_CONFIG); sheet.appendRow(['config_json', 'updatedAt', 'version']); }
+  const version = Number(sheet.getRange('C2').getValue() || 0) + 1;
+  const config = normalizeConfig(payload.config), updatedAt = new Date().toISOString();
+  sheet.getRange('A2:C2').setValues([[JSON.stringify(config), updatedAt, version]]);
+  return { version, updatedAt, revision: String(version) };
+}
+function saveSheetAnswer(payload) {
+  const secret = PropertiesService.getScriptProperties().getProperty('CHECKIN_SECRET');
+  if (secret && payload.secret !== secret) throw appError('unauthorized', 'アクセスキーを確認してください');
+  const ss = SpreadsheetApp.getActiveSpreadsheet(), name = payload.notebookName || SHEET_CHECKIN;
+  const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+  const answers = payload.entries ? legacyAnswers(payload.entries) : payload.answers || {};
+  const headers = sheet.getLastRow() ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(String) : ['timestamp'];
+  Object.keys(answers).forEach(key => { if (!headers.includes(key)) headers.push(key); });
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.appendRow(headers.map(h => h === 'timestamp' ? (payload.timestamp || new Date().toISOString()) : (answers[h] ?? '')));
+  return { saved: true, rows: sheet.getLastRow() - 1, submissionId: payload.submissionId };
+}
+
+function sheetTimestamp(value) {
+  if (value instanceof Date) return value.toISOString();
+  const text = String(value).trim();
+  const match = text.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (match) return new Date(`${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}T${(match[4] || '00').padStart(2, '0')}:${match[5] || '00'}:${match[6] || '00'}+09:00`).toISOString();
+  if (!/T.*(?:Z|[+-]\d{2}:\d{2})$/.test(text)) throw appError('invalid_data', '日時の形式を確認してください');
+  return new Date(text).toISOString();
+}
+function sourceId(text) {
+  return 'import_' + Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text, Utilities.Charset.UTF_8)
+    .map(b => (b & 255).toString(16).padStart(2, '0')).join('').slice(0, 32);
+}
+
+// Run manually in the bound spreadsheet's Apps Script editor. Reads sheets; never rewrites them.
+// Re-running resumes safely. Set STORAGE_BACKEND=github only after this succeeds.
+function migrateSpreadsheetToGitHub() {
+  return locked(() => {
+    const options = githubOptions(), ss = SpreadsheetApp.getActiveSpreadsheet();
+    let configFile = getGithubFile(options, 'config.json');
+    if (!configFile) {
+      const cfg = getSheetConfig().config;
+      if (!cfg.notebooks.length) throw appError('invalid_data', '移行元に設問がありません');
+      putGithubFile(options, 'config.json', cfg, null, 'Import Swipe Survey questions');
+      configFile = getGithubFile(options, 'config.json');
+    }
+    const cfg = normalizeConfig(configFile.data), grouped = {};
+    let total = 0;
+    ss.getSheets().forEach(sheet => {
+      if (sheet.getLastRow() < 2 || sheet.getRange(1, 1).getValue() !== 'timestamp') return;
+      const values = sheet.getDataRange().getValues(), headers = values[0].map(String);
+      const book = cfg.notebooks.find(n => n.name === sheet.getName());
+      const notebookId = book ? book.id : 'nb_legacy_' + stableHash(sheet.getName());
+      values.slice(1).forEach((row, index) => {
+        if (row[0] === '' || row[0] === null) return;
+        const timestamp = sheetTimestamp(row[0]), answers = {}, entries = [];
+        headers.slice(1).forEach((label, j) => {
+          const value = row[j + 1];
+          if (value === '' || value === null || label.startsWith('[メモ] ')) return;
+          answers[label] = value;
+          const matches = book ? book.questions.filter(q => q.label === label) : [];
+          const q = matches.length === 1 ? matches[0] : null;
+          const memoColumn = headers.indexOf('[メモ] ' + label);
+          entries.push({ questionId: q ? q.id : 'legacy_' + stableHash(notebookId + ':' + label),
+            label, type: q ? q.type : 'legacy', ...(q && q.metric ? { metric: q.metric } : {}),
+            value, memo: memoColumn >= 0 ? String(row[memoColumn] || '') : '' });
+        });
+        // Preserve every original column including blanks, notes, and retired questions.
+        headers.slice(1).forEach((label, j) => { answers[label] = row[j + 1]; });
+        const record = { schemaVersion: 1,
+          submissionId: sourceId(ss.getId() + ':' + sheet.getSheetId() + ':' + (index + 2) + ':' + timestamp),
+          timestamp, date: jstDate(timestamp), notebookId, notebookName: sheet.getName(),
+          configRevision: 'legacy-spreadsheet', entries, legacyAnswers: answers,
+          source: { sheet: sheet.getName(), row: index + 2 } };
+        const month = record.date.slice(0, 7);
+        (grouped[month] || (grouped[month] = [])).push(record); total++;
+      });
+    });
+    let added = 0;
+    Object.keys(grouped).sort().forEach(month => { added += appendRecords(options, month, grouped[month]).added || 0; });
+    const weightSheet = ss.getSheetByName('weight');
+    let points = 0;
+    if (weightSheet && !getGithubFile(options, 'weight-history.json')) {
+      const baseline = [];
+      weightSheet.getDataRange().getValues().slice(1).forEach(row => {
+        const value = parseWeight(row[2]);
+        if (value !== null && row[1] !== '') baseline.push({ date: jstDate(sheetTimestamp(row[1])), value });
+      });
+      points = baseline.length;
+      putGithubFile(options, 'weight-history.json', { schemaVersion: 1, source: 'spreadsheet:weight', points: baseline }, null, 'Import historical weight measurements');
+    }
+    const report = { status: 'ok', recordsRead: total, recordsAdded: added, weightMeasurementsImported: points,
+      notebooks: cfg.notebooks.length, note: 'Sheets unchanged. Switch STORAGE_BACKEND after checking the imported data.' };
+    console.log(JSON.stringify(report));
+    return report;
+  });
+}
