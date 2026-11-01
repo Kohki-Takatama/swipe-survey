@@ -85,3 +85,17 @@ test('an unauthenticated read request never becomes an answer in compatibility m
   assert.equal(h.post({ type: 'read', action: 'config' }).code, 'unauthorized');
   assert.equal(h.controls.mutations, 0);
 });
+
+test('re-import detects questions added after initial preparation, without overwriting either source', () => {
+  const cfg = configFixture();
+  const rows = [['config_json', 'updatedAt', 'version'], [JSON.stringify(cfg), '', 1]];
+  const h = gasHarness({ mode: 'spreadsheet', sheets: [sheetFixture('config', rows)] });
+  const first = h.ctx.migrateSpreadsheetToGitHub();
+  assert.equal(first.questions, 2); assert.equal(first.sourceConfigVersion, 1);
+  cfg.notebooks[0].questions.push({ id: 'q_added', type: 'swipe', label: 'New reminder' });
+  rows[1] = [JSON.stringify(cfg), '', 2];
+  const before = h.controls.mutations;
+  assert.throws(() => h.ctx.migrateSpreadsheetToGitHub(), error => error.code === 'source_config_changed');
+  assert.equal(h.controls.mutations, before);
+  assert.equal(h.files.get('checkin/swipe-survey/config.json').data.notebooks[0].questions.length, 2);
+});

@@ -239,19 +239,29 @@ function sourceId(text) {
     .map(b => (b & 255).toString(16).padStart(2, '0')).join('').slice(0, 32);
 }
 
+function canonicalConfig(value) {
+  if (Array.isArray(value)) return '[' + value.map(canonicalConfig).join(',') + ']';
+  if (value && typeof value === 'object') return '{' + Object.keys(value).sort()
+    .map(key => JSON.stringify(key) + ':' + canonicalConfig(value[key])).join(',') + '}';
+  return JSON.stringify(value);
+}
+
 // Run manually in the bound spreadsheet's Apps Script editor. Reads sheets; never rewrites them.
 // Re-running resumes safely. Set STORAGE_BACKEND=github only after this succeeds.
 function migrateSpreadsheetToGitHub() {
   return locked(() => {
     const options = githubOptions(), ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sourceConfig = getSheetConfig().config;
+    if (!sourceConfig.notebooks.length) throw appError('invalid_data', '移行元に設問がありません');
     let configFile = getGithubFile(options, 'config.json');
     if (!configFile) {
-      const cfg = getSheetConfig().config;
-      if (!cfg.notebooks.length) throw appError('invalid_data', '移行元に設問がありません');
-      putGithubFile(options, 'config.json', cfg, null, 'Import Swipe Survey questions');
+      putGithubFile(options, 'config.json', sourceConfig, null, 'Import Swipe Survey questions');
       configFile = getGithubFile(options, 'config.json');
     }
     const cfg = normalizeConfig(configFile.data), grouped = {};
+    if (canonicalConfig(sourceConfig.notebooks) !== canonicalConfig(cfg.notebooks)) {
+      throw appError('source_config_changed', 'スプシとGitHubの設問が一致しません。設問の差分と既存IDを確認し、最新の設定を同期してから移行を再実行してください');
+    }
     let total = 0;
     ss.getSheets().forEach(sheet => {
       if (sheet.getLastRow() < 2 || sheet.getRange(1, 1).getValue() !== 'timestamp') return;
@@ -297,7 +307,9 @@ function migrateSpreadsheetToGitHub() {
       putGithubFile(options, 'weight-history.json', { schemaVersion: 1, source: 'spreadsheet:weight', points: baseline }, null, 'Import historical weight measurements');
     }
     const report = { status: 'ok', recordsRead: total, recordsAdded: added, weightMeasurementsImported: points,
-      notebooks: cfg.notebooks.length, note: 'Sheets unchanged. Switch STORAGE_BACKEND after checking the imported data.' };
+      notebooks: cfg.notebooks.length, questions: cfg.notebooks.reduce((sum, n) => sum + n.questions.length, 0),
+      sourceConfigVersion: sourceConfig.version,
+      note: 'Sheets unchanged. Switch STORAGE_BACKEND after checking the imported data.' };
     console.log(JSON.stringify(report));
     return report;
   });

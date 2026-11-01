@@ -49,13 +49,16 @@ Repository permissionsの **Contents: Read and write** を付ける。実行ユ�
 
 ## 3. 過去データの移行
 
-1. チェックインの入力を一時的に止める。
+1. 設問追加を現在のスプシへ反映し終えてから、チェックインの入力と設問編集を一時的に止める。
 2. GASエディタで **`migrateSpreadsheetToGitHub`** を選んで実行する。初回にGoogleの権限確認が出た場合は内容を確認する。
-3. 実行ログの `status: ok`、`recordsRead`、`recordsAdded`、`weightMeasurementsImported` を確認する。
+3. 実行ログの `status: ok`、`recordsRead`、`recordsAdded`、`weightMeasurementsImported`、`notebooks`、`questions`、`sourceConfigVersion` を確認する。
 4. GitHubの記録先で、設定と月別記録・体重履歴が作成されていることを確認する。
 5. 必要なら同じ関数をもう一度実行する。`recordsAdded: 0` なら重複せず再開できている。
 
 移行元は、実行時点の紐づくスプシ。添付のxlsxスナップショットから本番データを書き戻す処理ではない。
+初回はその時点の最新設問を読み込むため、このPR作成後にスプシへ追加した設問も引き継ぐ。
+GitHub側に準備済みのconfigがある場合は、移行元と設問内容・ID・順序が一致するか確認する。
+異なる場合は `source_config_changed` で停止する。片方を自動で上書きせず、最新設問と既存IDを確認して同期してから再実行する。
 先頭列が `timestamp` のシートを対象とし、廃止済みの設問・メモ・空欄も `legacyAnswers` に原形で残す。
 現在の設問と同名の列が一意に対応する場合だけ固定IDに関連付ける。元データで同じ列に上書き済みの回答は復元できない。
 日時の解釈に失敗した場合は処理を停止する。途中までGitHubに保存されていても、再実行時には既存の送信IDを確認する。
@@ -69,9 +72,19 @@ Repository permissionsの **Contents: Read and write** を付ける。実行ユ�
    - 既存の実行ユーザー・アクセス設定を確認する。GitHub Pagesからの呼出しを受けるウェブアプリとして公開する必要がある。
    - URLを維持できれば、アプリ側のURL変更は不要。
 3. このPRの画面をプレビューまたはGitHub Pagesで開き、「設定 → URL・アクセスキーを変更」でGAS URLと `CHECKIN_SECRET` を入力する。
+   - PRのプレビューはPRのChecksにあるNetlify deploy-previewから開く。URLはブランチ更新後の成功したデプロイを使う。
 4. 設問が表示されることを確認する。1回回答し、**「記録しました」** と表示されるまで待つ。
 5. GitHubの月別JSONを確認し、回答が1件だけ追加されたことを確認する。「推移」で過去と今回の体重が見えることも確認する。
-6. 画面の確認後、このPRをmainへマージすると既存のGitHub Pages更新フローで配信される。
+6. 画面の確認後、このドラフトPRをReady for reviewにしてmainへマージすると、既存のGitHub Pages更新フローで配信される。
+7. いつもの本番URLでも接続設定を行う。NetlifyプレビューとGitHub Pagesは別のサイトなので、アクセスキーはそれぞれで設定する。
+
+### 切替時に照合すること
+
+- GitHubの `config.json` に、切替直前に追加した設問が含まれている。
+- `sourceConfigVersion` がスプシの `config!C2` と一致している。
+- 心がけリストなどノートブックごとの設問数・順序がスプシと一致している。
+- 実回答1件の送信後、GitHubの当月ファイルに同じ送信IDが1件だけある。
+- 本番URLの「設定」で「GitHub（非公開）」と表示される。
 
 ブラウザがPOST応答を取得できない場合も、成功扱いにはしない。GASの公開先・実行権限・リダイレクトを確認する。
 `no-cors` には戻さない。応答が見えなくなって保存確認できなくなるため。
