@@ -1,5 +1,7 @@
 // src/app.js
 import { state } from './state.js';
+import { questionKey } from './model.js';
+import { loadHistory } from './history.js';
 import { buildAll, resetAll, next, goToDone, sendAndDone } from './builders.js';
 import { goTo } from './navigation.js';
 import { initCloud, showSetupScreen, retryCloudLoad, saveGasUrl, applyCloudUpdate } from './cloud.js';
@@ -31,10 +33,10 @@ window.addEventListener('keydown', e => {
   e.preventDefault();
   card.style.transition = 'transform .38s cubic-bezier(.25,.46,.45,.94)';
   if (e.key === 'ArrowRight') {
-    state.answers[q.label] = 'はい'; if (emoji) emoji.textContent = '😄';
+    state.answers[questionKey(q)] = 'はい'; if (emoji) emoji.textContent = '😄';
     card.style.transform = 'translateX(600px) rotate(28deg)';
   } else {
-    state.answers[q.label] = 'いいえ'; if (emoji) emoji.textContent = '😔';
+    state.answers[questionKey(q)] = 'いいえ'; if (emoji) emoji.textContent = '😔';
     card.style.transform = 'translateX(-600px) rotate(-28deg)';
   }
   setTimeout(next, 370);
@@ -62,6 +64,8 @@ function hideSplash() {
 }
 
 // 初期化
+document.getElementById('history-refresh').addEventListener('click', loadHistory);
+document.getElementById('history-days').addEventListener('change', loadHistory);
 document.getElementById('cloud-overlay').classList.add('hidden');
 if (!state.GAS_URL) {
   setTimeout(() => { hideSplash(); showSetupScreen(false); }, 500);

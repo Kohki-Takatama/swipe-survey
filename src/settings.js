@@ -3,18 +3,25 @@ import { state } from './state.js';
 import { el } from './utils.js';
 import { closeEditForm, loadEditQuestions, onEditNotebookChange } from './editor.js';
 import { initCloud, showSetupScreen } from './cloud.js';
+import { apiRead, apiWrite, scopedKey } from './api.js';
+import { normalizeConfig, newId } from './model.js';
+import { loadHistory } from './history.js';
 
 export function switchTab(tab) {
+  if (state._submitting) return;
   if (tab !== 'answer') clearTimeout(state._saveTabTimer);
   closeEditForm();
   document.getElementById('tab-answer').classList.toggle('active', tab === 'answer');
   document.getElementById('tab-edit').classList.toggle('active', tab === 'edit');
   document.getElementById('tab-settings').classList.toggle('active', tab === 'settings');
+  document.getElementById('tab-history').classList.toggle('active', tab === 'history');
   document.getElementById('edit-panel').classList.toggle('hidden', tab !== 'edit');
   document.getElementById('settings-panel').classList.toggle('hidden', tab !== 'settings');
+  document.getElementById('history-panel').classList.toggle('hidden', tab !== 'history');
   if (tab === 'answer' && state.notebooks.length > 0) window.showNotebookList?.();
   if (tab === 'edit') { loadEditQuestions(); renderSettingsNotebooks(); }
   if (tab === 'settings') loadSettings();
+  if (tab === 'history') loadHistory();
 }
 
 export async function loadSettings() {
@@ -25,10 +32,9 @@ export async function loadSettings() {
   if (!state.GAS_URL) { lastEl.textContent = 'GAS URL 未設定'; return; }
   lastEl.textContent = '取得中...';
   try {
-    const sep = state.GAS_URL.includes('?') ? '&' : '?';
-    const res = await fetch(state.GAS_URL + sep + 'action=last-answer');
-    const data = await res.json();
-    lastEl.textContent = data.lastAnswer || '記録なし';
+    const data = await apiRead('last-answer');
+    lastEl.textContent = data.lastAnswer ? new Date(data.lastAnswer).toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' }) : '記録なし';
+    document.getElementById('settings-backend').textContent = state.storageBackend === 'github' ? 'GitHub（非公開）' : 'スプレッドシート';
   } catch(e) {
     lastEl.textContent = '取得できませんでした';
   }
@@ -74,24 +80,22 @@ export async function confirmAddNotebook() {
   const name = document.getElementById('eq-nb-name-input').value.trim();
   if (!name) return;
   const freq = document.getElementById('eq-nb-freq-select').value;
-  const id = 'nb_' + Date.now().toString(36);
-  state.notebooks.push({ id, name, frequency: freq, order: state.notebooks.length, questions: [] });
-  cancelAddNotebook();
-  await saveNotebooksToGAS();
-  renderSettingsNotebooks();
+  const id = newId('nb');
+  if (await saveNotebooksToGAS([...state.notebooks, { id, name, frequency: freq, order: state.notebooks.length, questions: [] }])) {
+    cancelAddNotebook(); renderSettingsNotebooks(); onEditNotebookChange(id);
+  }
 }
 
 export async function deleteNotebook(id) {
   const nb = state.notebooks.find(n => n.id === id);
   if (!nb) return;
   if (!confirm(`"${nb.name}" を削除しますか？`)) return;
-  state.notebooks = state.notebooks.filter(n => n.id !== id);
+  if (!await saveNotebooksToGAS(state.notebooks.filter(n => n.id !== id))) return;
   // 削除したノートブックが設問タブで選択中だった場合、ピッカーをリセット
   if (state.editNotebookId === id) {
     const next = state.notebooks[0];
     onEditNotebookChange(next ? next.id : null);
   }
-  await saveNotebooksToGAS();
   renderSettingsNotebooks();
 }
 
@@ -105,8 +109,7 @@ function startRenameNotebook(id, row) {
   saveBtn.onclick = async () => {
     const newName = input.value.trim();
     if (!newName) return;
-    nb.name = newName;
-    await saveNotebooksToGAS();
+    if (!await saveNotebooksToGAS(state.notebooks.map(n => n.id === id ? { ...n, name: newName } : n))) return;
     renderSettingsNotebooks();
     const opt = document.querySelector(`#eq-nb-select option[value="${id}"]`);
     if (opt) opt.textContent = newName;
@@ -118,15 +121,16 @@ function startRenameNotebook(id, row) {
   input.focus(); input.select();
 }
 
-async function saveNotebooksToGAS() {
-  if (!state.GAS_URL) return;
+async function saveNotebooksToGAS(notebooks) {
+  if (!state.GAS_URL || state._configSaving) return false;
+  state._configSaving = true;
   try {
-    await fetch(state.GAS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ type: 'config', config: { notebooks: state.notebooks } })
-    });
-    try { localStorage.removeItem(state.QC_KEY); } catch(e) {}
-  } catch(e) { console.warn('saveNotebooksToGAS failed:', e); }
+    const config = normalizeConfig({ notebooks });
+    const data = await apiWrite({ type: 'config', config, expectedRevision: state.configRevision });
+    state.notebooks = (data.config || config).notebooks; state.configRevision = data.revision ?? data.version;
+    try { localStorage.removeItem(scopedKey('questions')); } catch(e) {}
+    document.getElementById('eq-save-error').textContent = '';
+    return true;
+  } catch(e) { document.getElementById('eq-save-error').textContent = e.message; return false; }
+  finally { state._configSaving = false; }
 }

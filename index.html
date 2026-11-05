@@ -235,6 +235,29 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
 .nb-select-wrap::after{content:'▼';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:10px;color:var(--sub);pointer-events:none;}
 .nb-select-wrap .form-select{appearance:none;-webkit-appearance:none;padding-right:28px;width:100%;}
 .eq-nb-picker-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+/* 履歴と保存状態 */
+#history-panel{position:absolute;inset:0;bottom:calc(56px + env(safe-area-inset-bottom));z-index:90;background:var(--bg);overflow-y:auto;padding:24px 16px;}
+#history-panel.hidden{display:none;}
+.history-card{background:var(--card);padding:18px;border-radius:18px;margin-bottom:14px;}
+.history-toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin:16px 0;}
+.history-toolbar select{width:auto;}
+.history-note{font-size:13px;color:#62646b;line-height:1.7;}
+#history-status,#eq-save-error{font-size:14px;line-height:1.6;}
+#eq-save-error{color:#c62828;margin-bottom:8px;}
+#history-latest{font-size:22px;font-weight:700;min-height:28px;}
+#history-chart svg{display:block;width:100%;height:auto;}
+.history-legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;}
+.history-legend span{border-top:3px solid;padding-top:5px;}
+.history-table-wrap{overflow-x:auto;}
+.history-table{width:100%;border-collapse:collapse;font-size:12px;white-space:nowrap;}
+.history-table th,.history-table td{padding:10px 6px;text-align:right;border-bottom:1px solid var(--border);}
+.history-table th:first-child,.history-table td:first-child{text-align:left;}
+.pending-notice{padding:16px;background:#fff3df;border:1px solid #dbb47a;border-radius:14px;margin-bottom:16px;}
+.pending-notice p{font-size:14px;line-height:1.6;margin:0 0 10px;}
+.connection-help{font-size:13px;color:var(--sub);line-height:1.6;text-align:left;margin:10px 0 18px;}
+#access-key-input{margin-top:12px;}
+button:disabled{cursor:default;opacity:.6;}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid #007aff;outline-offset:3px;}
 </style>
 </head>
 <body>
@@ -255,15 +278,20 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
     <div class="cloud-spinner" id="cloud-spinner"></div>
     <div class="cloud-msg" id="cloud-msg">設問を読み込み中…</div>
     <button class="cloud-retry" id="cloud-retry" style="display:none" onclick="retryCloudLoad()">再試行</button>
+    <button class="cloud-retry" onclick="showSetupScreen(true)">接続設定を変更</button>
   </div>
   <div id="setup-screen" class="hidden">
     <div class="setup-inner">
       <div class="setup-icon">⚙️</div>
-      <div class="setup-title">GAS URL の設定</div>
-      <p class="setup-desc">Google Apps Script の URL を入力してください。<br>一度設定すると次回から自動で読み込まれます。</p>
+      <div class="setup-title">記録先への接続</div>
+      <p class="setup-desc">一度設定すると、このブラウザで保存されます。</p>
+      <label class="form-label" for="gas-url-input">GAS ウェブアプリURL</label>
       <input type="url" id="gas-url-input" class="setup-input"
         placeholder="https://script.google.com/macros/s/..." autocomplete="off" spellcheck="false">
-      <div class="setup-err" id="setup-err"></div>
+      <label class="form-label" for="access-key-input">アクセスキー</label>
+      <input type="password" id="access-key-input" class="setup-input" autocomplete="off" spellcheck="false" placeholder="GitHub保存時に設定したキー">
+      <p class="connection-help">GitHub保存ではGASに設定したアクセスキーを入力してください。GitHubのトークンは入力しません。従来のスプシ保存では空欄で接続できます。</p>
+      <div class="setup-err" id="setup-err" role="alert"></div>
       <button class="setup-btn" onclick="saveGasUrl()">保存して開始</button>
     </div>
   </div>
@@ -276,6 +304,9 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
     <button class="tab-btn" id="tab-edit" onclick="switchTab('edit')">
       <span class="tab-icon">✎</span>
       <span class="tab-label">設問</span>
+    </button>
+    <button class="tab-btn" id="tab-history" onclick="switchTab('history')">
+      <span class="tab-icon">↗</span><span class="tab-label">推移</span>
     </button>
     <button class="tab-btn" id="tab-settings" onclick="switchTab('settings')">
       <span class="tab-icon">⚙️</span>
@@ -319,7 +350,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
       <button class="add-btn" id="eq-add-btn">＋ 設問を追加</button>
     </div>
     <div id="edit-footer">
-      <button id="eq-save-btn" class="eq-save-btn" onclick="saveQuestions()">GASに保存する</button>
+      <div id="eq-save-error" role="alert"></div>
+      <button id="eq-save-btn" class="eq-save-btn" onclick="saveQuestions()">設問を保存</button>
     </div>
   </div>
   <!-- 設定パネル -->
@@ -330,12 +362,38 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,'Helvetica Neue'
         <div id="settings-last-answer" class="settings-value">取得中...</div>
       </div>
       <div class="settings-section">
+        <div class="settings-section-title">保存先</div>
+        <div id="settings-backend" class="settings-value">接続を確認中</div>
+      </div>
+      <div class="settings-section">
         <div class="settings-section-title">GAS URL</div>
         <div id="settings-gas-url" class="settings-value-url"></div>
-        <button class="settings-edit-btn" onclick="showSetupScreen(true); switchTab('answer');">変更</button>
+        <button class="settings-edit-btn" onclick="showSetupScreen(true); switchTab('answer');">URL・アクセスキーを変更</button>
       </div>
     </div>
   </div>
+  <section id="history-panel" class="hidden" aria-label="体重推移">
+    <div class="history-card">
+      <h1 style="font-size:22px;margin:0 0 12px;">体重推移</h1>
+      <div id="history-latest"></div>
+      <div class="history-toolbar">
+        <label for="history-days">期間</label>
+        <select id="history-days" class="form-select">
+          <option value="30">30日</option><option value="90" selected>90日</option><option value="365">1年</option>
+        </select>
+        <button class="settings-edit-btn" id="history-refresh">更新</button>
+      </div>
+      <p id="history-status" role="status" aria-live="polite"></p>
+      <div id="history-chart"></div>
+      <p class="history-note">同じ日は最後の測定値を表示。移動平均は暦日で7日・14日・30日を振り返り、記録のない日は除外します。</p>
+    </div>
+    <details class="history-card"><summary>数値一覧（kg）</summary>
+      <div class="history-table-wrap"><table class="history-table">
+        <thead><tr><th scope="col">日付</th><th scope="col">実測</th><th scope="col">1週間</th><th scope="col">2週間</th><th scope="col">1か月</th></tr></thead>
+        <tbody id="history-rows"></tbody>
+      </table></div>
+    </details>
+  </section>
   <!-- 設問編集モーダル -->
   <div id="eq-modal-overlay" class="eq-modal-overlay"></div>
   <div id="eq-modal" class="eq-modal">

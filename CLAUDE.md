@@ -43,7 +43,9 @@
 
 - **フロントエンド**: 単一HTMLファイル（Vanilla JS）
 - **バックエンド**: Google Apps Script（Web App）
-- **データストア**: Google スプレッドシート
+- **データストア**: Google スプレッドシート（互換モード）、または非公開GitHub（GAS経由）
+- **GASの編集元**: `src/model.js` と `gas/backend.js`。`npm run build:gas` で `gas-doPost.gs` を生成する
+- **切替・移行手順**: `docs/github-storage.md`。個人の回答・認証情報は公開リポジトリに保存しない
 
 ## Claude 開発ルール
 
