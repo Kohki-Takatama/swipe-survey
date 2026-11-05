@@ -264,6 +264,7 @@ function migrateSpreadsheetToGitHub() {
     }
     let total = 0;
     ss.getSheets().forEach(sheet => {
+      if (sheet.getType() !== SpreadsheetApp.SheetType.GRID) return;
       if (sheet.getLastRow() < 2 || sheet.getRange(1, 1).getValue() !== 'timestamp') return;
       const values = sheet.getDataRange().getValues(), headers = values[0].map(String);
       const book = cfg.notebooks.find(n => n.name === sheet.getName());

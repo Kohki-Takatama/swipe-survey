@@ -32,7 +32,7 @@ export function gasHarness({ mode = 'github', sheets = [], privateRepository = t
       base64Encode: text => Buffer.from(text).toString('base64'), base64Decode: text => Buffer.from(text, 'base64'),
       newBlob: bytes => ({ getDataAsString: () => Buffer.from(bytes).toString('utf8'), getBytes: () => [...Buffer.from(bytes)] }),
       computeDigest: (_, text) => [...createHash('sha256').update(text).digest()] },
-    SpreadsheetApp: { getActiveSpreadsheet: () => ({ getId: () => 'synthetic-sheet-id',
+    SpreadsheetApp: { SheetType: { GRID: 'GRID' }, getActiveSpreadsheet: () => ({ getId: () => 'synthetic-sheet-id',
       getSheets: () => sheets, getSheetByName: name => sheets.find(s => s.getName() === name) || null }) },
     UrlFetchApp: { fetch(url, args) {
       requests.push({ url, method: args.method });
@@ -70,7 +70,7 @@ export function gasHarness({ mode = 'github', sheets = [], privateRepository = t
 }
 
 export function sheetFixture(name, rows, id = 1) {
-  return { getName: () => name, getSheetId: () => id, getLastRow: () => rows.length,
+  return { getType: () => 'GRID', getName: () => name, getSheetId: () => id, getLastRow: () => rows.length,
     getDataRange: () => ({ getValues: () => rows }),
     getRange(a, b) {
       if (a === 'A2:C2') return { getValues: () => [[...rows[1]]] };

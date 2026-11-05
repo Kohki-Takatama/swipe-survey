@@ -86,6 +86,31 @@ test('an unauthenticated read request never becomes an answer in compatibility m
   assert.equal(h.controls.mutations, 0);
 });
 
+test('legacy import skips object sheets before reading cells and still imports answers and weight', () => {
+  const objectSheet = {
+    getType: () => 'OBJECT',
+    getName: () => 'Chart',
+    getLastRow() { throw new Error('OBJECT sheets cannot read rows'); },
+    getRange() { throw new Error('OBJECT sheets cannot read cells'); },
+    getDataRange() { throw new Error('OBJECT sheets cannot read data'); }
+  };
+  const cfg = configFixture();
+  const sheets = [objectSheet,
+    sheetFixture('config', [['config_json', 'updatedAt', 'version'], [JSON.stringify(cfg), '', 1]]),
+    sheetFixture('Check-in', [['timestamp', '体重'], ['2026-10-30T01:00:00Z', 70.5]], 2),
+    sheetFixture('weight', [['', 'Date', 'Measured'], ['', '2026-10-01T00:00:00Z', 71]], 3)
+  ];
+  const h = gasHarness({ sheets, mode: 'spreadsheet' });
+  h.files.delete('checkin/swipe-survey/config.json');
+  const result = h.ctx.migrateSpreadsheetToGitHub();
+  assert.equal(result.status, 'ok');
+  assert.equal(result.recordsRead, 1);
+  assert.equal(result.recordsAdded, 1);
+  assert.equal(result.weightMeasurementsImported, 1);
+  assert.equal(h.files.get('checkin/swipe-survey/records/2026-10.json').data.records[0].entries[0].value, 70.5);
+  assert.equal(h.ctx.migrateSpreadsheetToGitHub().recordsAdded, 0);
+});
+
 test('re-import detects questions added after initial preparation, without overwriting either source', () => {
   const cfg = configFixture();
   const rows = [['config_json', 'updatedAt', 'version'], [JSON.stringify(cfg), '', 1]];
